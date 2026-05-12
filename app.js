@@ -1,5 +1,5 @@
 // 주의: Render.com 배포 후 본인의 서버 URL로 반드시 변경하세요!
-const socket = io('http://localhost:3000'); 
+const socket = io('https://joshio.onrender.com'); 
 
 let myId = '';
 let currentRoomId = '';
