@@ -1,0 +1,153 @@
+@import url('https://fonts.googleapis.com/css2?family=Jua&display=swap');
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Jua', sans-serif;
+  background-color: #b3d4f0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#lobby {
+  background: white;
+  padding: 40px;
+  border-radius: 15px;
+  text-align: center;
+  box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+}
+
+#lobby input, #lobby button {
+  display: block;
+  width: 100%;
+  margin: 10px 0;
+  padding: 10px;
+  font-size: 16px;
+}
+
+#game-board {
+  width: 100%;
+  max-width: 450px;
+  height: 90vh;
+  /* 4단 상하관계 배경 (레드-그린-그레이-브라운) */
+  background: linear-gradient(
+    to bottom,
+    #ffcccc 0%, #ffcccc 25%,   /* 1티어 드래곤 */
+    #ccffcc 25%, #ccffcc 50%,   /* 2티어 뱀 */
+    #e6e6e6 50%, #e6e6e6 75%,   /* 3티어 늑대 */
+    #d9c2a6 75%, #d9c2a6 100%   /* 4티어 다람쥐 */
+  );
+  border: 4px solid #333;
+  border-radius: 10px;
+  position: relative;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+#combo-text {
+  position: absolute;
+  top: 35%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-5deg);
+  font-size: 50px;
+  color: white;
+  text-shadow: 3px 3px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000;
+  z-index: 10;
+  white-space: nowrap;
+}
+
+#center-field {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  gap: 5px;
+  z-index: 5;
+}
+
+/* 카드 공통 디자인 */
+.card {
+  width: 45px;
+  height: 65px;
+  background-color: #111;
+  border: 2px solid #fff;
+  border-radius: 6px;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  font-size: 20px;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.1s;
+}
+
+.card .number { font-weight: bold; }
+.card .suit { font-size: 16px; }
+
+/* 내 패 영역 */
+#my-area {
+  position: absolute;
+  bottom: 10px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+#my-hand {
+  display: flex;
+  gap: 2px;
+  flex-wrap: wrap;
+  justify-content: center;
+  padding: 0 10px;
+}
+
+.card.in-hand:hover { transform: translateY(-10px); }
+.card.selected { 
+  transform: translateY(-15px);
+  border-color: #ffeb3b;
+  box-shadow: 0 0 10px #ffeb3b;
+}
+
+.controls {
+  margin-top: 15px;
+  display: flex;
+  gap: 10px;
+}
+
+.controls button {
+  padding: 10px 20px;
+  font-family: 'Jua', sans-serif;
+  font-size: 18px;
+  border-radius: 8px;
+  border: 2px solid #000;
+  cursor: pointer;
+}
+
+#playBtn { background-color: #ffcccc; }
+#passBtn { background-color: #e6e6e6; }
+
+#opponents {
+  position: absolute;
+  top: 10px;
+  width: 100%;
+  display: flex;
+  justify-content: space-around;
+  font-size: 14px;
+  font-weight: bold;
+  color: #333;
+}
+
+#my-turn-indicator {
+  background: rgba(0,0,0,0.7);
+  color: #0f0;
+  padding: 5px 15px;
+  border-radius: 20px;
+  margin-bottom: 10px;
+  display: none;
+}
