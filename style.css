@@ -6,22 +6,16 @@ body { margin: 0; padding: 0; font-family: 'Jua', sans-serif; background-color: 
 #lobby { background: white; width: 90%; max-width: 400px; padding: 20px; border-radius: 15px; box-shadow: 0 10px 20px rgba(0,0,0,0.5); max-height: 90vh; overflow-y: auto; }
 #lobby h1 { text-align: center; color: #333; }
 .lobby-section { margin-bottom: 20px; padding: 15px; background: #f5f5f5; border-radius: 10px; }
-.lobby-section h3 { margin-top: 0; border-bottom: 2px solid #ccc; padding-bottom: 5px; align-items: center;}
+.lobby-section h3 { margin-top: 0; border-bottom: 2px solid #ccc; padding-bottom: 5px;}
 #lobby input, #lobby select, #lobby button { width: 100%; box-sizing: border-box; margin: 5px 0; padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 5px; font-family: 'Jua', sans-serif; }
 #createRoomBtn { background-color: #ffcccc; border: 2px solid #ff6b6b; color: #333; cursor: pointer; font-weight: bold; }
 #roomList { list-style: none; padding: 0; margin: 0; }
 .room-item { background: white; border: 1px solid #ccc; padding: 10px; margin-bottom: 5px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
-.room-item:hover { background: #e6f7ff; border-color: #1890ff; }
 
-/* 게임 화면 (배경색: 빨 초 노 파) */
+/* 게임 화면 */
 #game-board {
   width: 100%; max-width: 450px; height: 95vh;
-  background: linear-gradient( to bottom, 
-    #ffcccc 0%, #ffcccc 25%,     /* 빨강 */
-    #ccffcc 25%, #ccffcc 50%,    /* 초록 */
-    #ffee99 50%, #ffee99 75%,    /* 노랑 */
-    #cce6ff 75%, #cce6ff 100%    /* 파랑 */
-  );
+  background: linear-gradient( to bottom, #ffcccc 0%, #ffcccc 25%, #ccffcc 25%, #ccffcc 50%, #ffee99 50%, #ffee99 75%, #cce6ff 75%, #cce6ff 100% );
   border: 4px solid #111; border-radius: 10px; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden;
 }
 
@@ -29,25 +23,29 @@ body { margin: 0; padding: 0; font-family: 'Jua', sans-serif; background-color: 
 #combo-text { position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%) rotate(-5deg); font-size: 30px; color: white; text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000; z-index: 10; white-space: nowrap; }
 #center-field { position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%); display: flex; gap: 5px; z-index: 5; }
 
-/* 타일(카드) 공통 디자인 */
 .card { width: 42px; height: 60px; border-radius: 8px; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; user-select: none; transition: transform 0.1s; box-shadow: 2px 2px 5px rgba(0,0,0,0.3); border: 2px solid; background-color: #fff; z-index: 5;}
 .card .number { font-weight: bold; font-size: 22px; }
 .card .suit { font-size: 16px; margin-top: -5px; }
 
-/* 오리지널 렉시오 테마 매칭 */
-.card.suit-☀️ { background-color: #ffebeb; border-color: #cc0000; color: #cc0000; }  /* 해: 빨강 */
-.card.suit-🌙 { background-color: #ebfaeb; border-color: #00802b; color: #00802b; }  /* 달: 초록 */
-.card.suit-⭐ { background-color: #fff9e6; border-color: #b38600; color: #b38600; }  /* 별: 노랑(약간 어두운 금색톤) */
-.card.suit-☁️ { background-color: #e6f2ff; border-color: #0066cc; color: #0066cc; }  /* 구름: 파랑 */
+/* 수트 색상 규칙 */
+.card.suit-☀️ { background-color: #ffebeb; border-color: #cc0000; color: #cc0000; }  
+.card.suit-🌙 { background-color: #ebfaeb; border-color: #00802b; color: #00802b; }  
+.card.suit-⭐ { background-color: #fff9e6; border-color: #b38600; color: #b38600; }  
+.card.suit-☁️ { background-color: #e6f2ff; border-color: #0066cc; color: #0066cc; }  
 
+/* 상대방 & 코인 표시 */
 #opponents { position: absolute; top: 10px; width: 100%; display: flex; justify-content: space-around; z-index: 5; }
-.opponent-area { text-align: center; background: rgba(255,255,255,0.7); padding: 5px 10px; border-radius: 10px; border: 1px solid #333; }
-.opponent-name { font-size: 14px; font-weight: bold; margin-bottom: 5px; }
+.opponent-area { text-align: center; background: rgba(255,255,255,0.85); padding: 5px 10px; border-radius: 10px; border: 2px solid #333; }
+.opponent-name { font-size: 13px; font-weight: bold; margin-bottom: 5px; color: #111; line-height: 1.3; }
 .opponent-hand { display: flex; justify-content: center; gap: 0; }
-.card-back { width: 15px; height: 25px; background-color: #333; border: 1px solid #ddd; border-radius: 3px; margin-left: -10px; box-shadow: 1px 1px 2px rgba(0,0,0,0.5); }
+.card-back { width: 15px; height: 25px; background-color: #222; border: 1px solid #aaa; border-radius: 3px; margin-left: -10px; box-shadow: 1px 1px 2px rgba(0,0,0,0.5); }
 .card-back:first-child { margin-left: 0; }
 
 #my-area { position: absolute; bottom: 10px; width: 100%; display: flex; flex-direction: column; align-items: center; z-index: 5; }
+
+/* 내 코인 뱃지 */
+#my-coins-display { background: rgba(0,0,0,0.7); color: #ffeb3b; padding: 5px 15px; border-radius: 15px; font-size: 14px; margin-bottom: 5px; border: 1px solid #fff; }
+
 #my-hand { display: flex; gap: 0; flex-wrap: wrap; justify-content: center; padding: 0 10px; margin-bottom: 10px;}
 .card.in-hand { margin-left: -18px; box-shadow: -2px 0px 5px rgba(0,0,0,0.2); } 
 .card.in-hand:first-child { margin-left: 0; }
@@ -58,4 +56,4 @@ body { margin: 0; padding: 0; font-family: 'Jua', sans-serif; background-color: 
 .controls button { padding: 10px 25px; font-family: 'Jua', sans-serif; font-size: 18px; border-radius: 8px; border: 2px solid #000; cursor: pointer; }
 #playBtn { background-color: #ffcccc; }
 #passBtn { background-color: #e6e6e6; }
-#my-turn-indicator { background: #ffeb3b; color: #000; border: 2px solid #000; padding: 5px 20px; border-radius: 20px; margin-bottom: 15px; font-weight: bold; display: none; box-shadow: 2px 2px 0 #000; }
+#my-turn-indicator { background: #ffeb3b; color: #000; border: 2px solid #000; padding: 5px 20px; border-radius: 20px; margin-bottom: 10px; font-weight: bold; display: none; box-shadow: 2px 2px 0 #000; }
