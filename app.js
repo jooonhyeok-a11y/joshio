@@ -1,5 +1,5 @@
 // ★ Render.com 주소로 수정
-const socket = io('https://여기에-본인의-render-서비스-이름.onrender.com'); 
+const socket = io('https://joshio.onrender.com'); 
 
 let myId = '';
 let currentRoomId = '';
@@ -11,10 +11,7 @@ const roomListUl = document.getElementById('roomList');
 const nicknameInput = document.getElementById('nicknameInput');
 const roomNameInput = document.getElementById('roomNameInput');
 
-// 에러 알림 처리 (잘못된 패 냈을 때)
-socket.on('playError', (msg) => {
-  alert(msg);
-});
+socket.on('playError', (msg) => { alert(msg); });
 
 socket.on('roomList', (rooms) => {
   roomListUl.innerHTML = '';
@@ -86,45 +83,61 @@ socket.on('updateRoom', (room) => {
   selectedCards = []; 
 
   let myIndex = -1;
-  let myCoins = 0;
+  let isMyTurn = false;
   
   room.players.forEach((player, index) => {
     if (player.id === socket.id) {
       myIndex = index;
-      myCoins = player.coins;
-      player.hand.forEach(card => myHandEl.appendChild(renderCard(card, true)));
+      if (room.currentTurn === myIndex) isMyTurn = true;
+      
+      const coinsDisplay = document.getElementById('my-coins-display');
+      // 파산 처리
+      if (player.isOut) {
+        coinsDisplay.innerHTML = `💀 파산 (Out)`;
+        coinsDisplay.style.color = "#ff6b6b";
+        coinsDisplay.style.borderColor = "#ff6b6b";
+      } else {
+        coinsDisplay.innerHTML = `🪙 내 코인: ${player.coins}`;
+        coinsDisplay.style.color = "#ffeb3b";
+        coinsDisplay.style.borderColor = "#fff";
+        player.hand.forEach(card => myHandEl.appendChild(renderCard(card, true)));
+      }
     } else {
+      // 상대방 렌더링
       const opDiv = document.createElement('div');
       opDiv.className = 'opponent-area';
+      if (player.isOut) opDiv.style.opacity = '0.4'; // 파산자 흐리게
       
       const nameDiv = document.createElement('div');
       nameDiv.className = 'opponent-name';
-      // 코인과 이름 표시
-      nameDiv.innerHTML = `🪙${player.coins}<br>${player.nickname} (${player.hand.length}장)`;
+      if (player.isOut) {
+        nameDiv.innerHTML = `<span style="color:red;">💀파산</span><br>${player.nickname}`;
+      } else {
+        nameDiv.innerHTML = `🪙${player.coins}<br>${player.nickname} (${player.hand.length}장)`;
+      }
       opDiv.appendChild(nameDiv);
 
       const cardsDiv = document.createElement('div');
       cardsDiv.className = 'opponent-hand';
-      for(let i=0; i<player.hand.length; i++) {
-        const backCard = document.createElement('div');
-        backCard.className = 'card-back';
-        cardsDiv.appendChild(backCard);
+      if (!player.isOut) {
+        for(let i=0; i<player.hand.length; i++) {
+          const backCard = document.createElement('div');
+          backCard.className = 'card-back';
+          cardsDiv.appendChild(backCard);
+        }
       }
       opDiv.appendChild(cardsDiv);
       opponentsEl.appendChild(opDiv);
     }
   });
 
-  document.getElementById('my-coins-display').innerText = `🪙 내 코인: ${myCoins}`;
-
   const turnIndicator = document.getElementById('my-turn-indicator');
   const playBtn = document.getElementById('playBtn');
   const passBtn = document.getElementById('passBtn');
 
   if (room.isPlaying) {
-      if (myIndex !== -1 && room.currentTurn === myIndex) {
+      if (isMyTurn && !room.players[myIndex].isOut) {
         turnIndicator.style.display = 'block';
-        // 선일 경우 텍스트 변경
         turnIndicator.innerText = room.field.length === 0 ? "👉 내 턴! (선입니다)" : "👉 내 턴입니다!";
         playBtn.disabled = false;
         passBtn.disabled = false;
@@ -135,13 +148,12 @@ socket.on('updateRoom', (room) => {
       }
   } else {
       turnIndicator.style.display = 'block';
-      turnIndicator.innerText = `대기중... (${room.players.length}/${room.maxPlayers}명)`;
+      turnIndicator.innerText = `대기/종료 (${room.players.length}/${room.maxPlayers}명)`;
   }
 });
 
 document.getElementById('playBtn').addEventListener('click', () => {
   if (selectedCards.length === 0) return alert('카드를 선택해주세요!');
-  // 서버에 검증을 맡기므로 cards만 보냄
   socket.emit('playCards', { roomId: currentRoomId, cards: selectedCards });
 });
 
