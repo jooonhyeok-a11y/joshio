@@ -12,12 +12,10 @@
   <!-- 로비 화면 -->
   <div id="lobby">
     <h1>렉시오 온라인 🐉</h1>
-    
     <div class="lobby-section">
       <h3>내 정보</h3>
       <input type="text" id="nicknameInput" placeholder="사용할 닉네임 입력">
     </div>
-
     <div class="lobby-section">
       <h3>새 방 만들기</h3>
       <input type="text" id="roomNameInput" placeholder="방 제목">
@@ -28,20 +26,24 @@
       </select>
       <button id="createRoomBtn">방 만들기</button>
     </div>
-
     <div class="lobby-section">
       <h3>입장 가능한 방</h3>
-      <ul id="roomList">
-        <!-- JS로 방 목록이 동적 생성됨 -->
-      </ul>
+      <ul id="roomList"></ul>
     </div>
   </div>
 
   <!-- 게임 화면 -->
   <div id="game-board" style="display: none;">
+    <!-- 배경 이모지 마크 -->
+    <div class="bg-emoji" style="top: 5%;">🐉</div>
+    <div class="bg-emoji" style="top: 30%;">🐍</div>
+    <div class="bg-emoji" style="top: 55%;">🐺</div>
+    <div class="bg-emoji" style="top: 80%;">🐿️</div>
+
     <div id="combo-text">대기중</div>
     <div id="center-field"></div>
     <div id="opponents"></div>
+    
     <div id="my-area">
       <div id="my-turn-indicator">내 턴이 아닙니다</div>
       <div id="my-hand"></div>
