@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lexio - 사신수 에디션</title>
+    <style>
+        :root {
+            --bg-color: #2c3e50;
+            --board-color: #34495e;
+            --text-color: #ecf0f1;
+        }
+        body {
+            font-family: 'Pretendard', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            height: 90vh;
+        }
+        h1 { margin-bottom: 10px; }
+        .board {
+            flex-grow: 1;
+            background-color: var(--board-color);
+            border-radius: 15px;
+            margin: 20px auto;
+            width: 90%;
+            max-width: 800px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+        }
+        .hand-container {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+            min-height: 160px;
+        }
+        .card {
+            width: 80px;
+            height: 120px;
+            background-color: white;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 0;
+            cursor: pointer;
+            box-shadow: 2px 4px 8px rgba(0,0,0,0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+            user-select: none;
+        }
+        .card.selected {
+            transform: translateY(-20px);
+            box-shadow: 0 10px 20px rgba(241, 196, 15, 0.6);
+            border: 2px solid #f1c40f;
+        }
+        .card .emoji { font-size: 40px; }
+        .card .number { font-size: 28px; font-weight: bold; }
+        
+        /* 사신수 테마 색상 적용 */
+        .suit-dragon { color: #2980b9; } /* 청룡 */
+        .suit-bird { color: #c0392b; }   /* 주작 */
+        .suit-tiger { color: #7f8c8d; }  /* 백호 */
+        .suit-turtle { color: #2c3e50; } /* 현무 */
+
+        .controls { margin-top: 10px; }
+        button {
+            padding: 15px 30px;
+            font-size: 18px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 0 10px;
+            transition: background 0.2s;
+        }
+        .btn-play { background-color: #27ae60; color: white; }
+        .btn-play:hover { background-color: #2ecc71; }
+        .btn-pass { background-color: #e74c3c; color: white; }
+        .message { margin-top: 15px; font-size: 18px; color: #f1c40f; min-height: 25px; }
+    </style>
+</head>
+<body>
+
+    <h1>Lexio - 사신수 에디션</h1>
+    <p>3은 가장 낮고, 2는 가장 높습니다. (3 < 4 < ... < 15 < 1 < 2)</p>
+
+    <!-- 보드 (제출된 카드 표시) -->
+    <div class="board" id="board">
+        <div id="board-cards" class="hand-container" style="margin-bottom:0; min-height:120px;">
+            <span style="color:#7f8c8d;">게임을 시작하고 카드를 내보세요!</span>
+        </div>
+    </div>
+
+    <!-- 플레이어 패 -->
+    <div class="hand-container" id="player-hand"></div>
+
+    <!-- 컨트롤 패널 -->
+    <div class="controls">
+        <button class="btn-play" onclick="playCards()">선택 카드 내기</button>
+        <button class="btn-pass" onclick="passTurn()">패스 (새 게임)</button>
+    </div>
+    <div class="message" id="message-box"></div>
+
+<script>
+    // 렉시오 룰: 숫자는 3이 가장 낮고 2가 가장 높음.
+    // 족보 계산을 위해 rank(서열)를 부여합니다.
+    const numberRanks = {
+        3:1, 4:2, 5:3, 6:4, 7:5, 8:6, 9:7, 10:8, 11:9, 12:10, 13:11, 14:12, 15:13, 1:14, 2:15
+    };
+    
+    // 사신수 수트: 청룡(강) > 주작 > 백호 > 현무(약)
+    const suits = [
+        { id: 'dragon', icon: '🐲', power: 4, class: 'suit-dragon' },
+        { id: 'bird', icon: '🐦', power: 3, class: 'suit-bird' },
+        { id: 'tiger', icon: '🐯', power: 2, class: 'suit-tiger' },
+        { id: 'turtle', icon: '🐢', power: 1, class: 'suit-turtle' }
+    ];
+
+    let deck = [];
+    let playerHand = [];
+
+    // 1. 덱 생성 및 셔플 (60장)
+    function initGame() {
+        deck = [];
+        suits.forEach(suit => {
+            for (let num of Object.keys(numberRanks)) {
+                deck.push({ 
+                    number: parseInt(num), 
+                    rank: numberRanks[num], 
+                    suit: suit 
+                });
+            }
+        });
+        
+        // 피셔-예이츠 셔플
+        for (let i = deck.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [deck[i], deck[j]] = [deck[j], deck[i]];
+        }
+
+        // 4명 기준 15장씩 배분 (이 코드는 플레이어 1의 패만 가져옴)
+        playerHand = deck.slice(0, 15);
+        sortHand(playerHand);
+        renderHand();
+        document.getElementById('board-cards').innerHTML = '<span style="color:#7f8c8d;">게임을 시작하고 카드를 내보세요!</span>';
+        showMessage("게임이 시작되었습니다.");
+    }
+
+    // 2. 패 정렬 (숫자 오름차순 -> 수트 오름차순)
+    function sortHand(hand) {
+        hand.sort((a, b) => {
+            if (a.rank !== b.rank) return a.rank - b.rank;
+            return a.suit.power - b.suit.power;
+        });
+    }
+
+    // 3. 화면에 내 패 그리기
+    function renderHand() {
+        const handDiv = document.getElementById('player-hand');
+        handDiv.innerHTML = '';
+        
+        playerHand.forEach((card, index) => {
+            const cardEl = document.createElement('div');
+            cardEl.className = `card ${card.suit.class}`;
+            cardEl.innerHTML = `
+                <div class="number">${card.number}</div>
+                <div class="emoji">${card.suit.icon}</div>
+                <div class="number" style="transform: rotate(180deg);">${card.number}</div>
+            `;
+            // 카드 클릭 이벤트 (선택/해제)
+            cardEl.onclick = () => {
+                cardEl.classList.toggle('selected');
+                card.selected = !card.selected;
+            };
+            handDiv.appendChild(cardEl);
+        });
+    }
+
+    // 4. 카드 내기 (핵심 로직)
+    function playCards() {
+        const selectedCards = playerHand.filter(c => c.selected);
+        if (selectedCards.length === 0) {
+            showMessage("카드를 먼저 선택해주세요.");
+            return;
+        }
+
+        const validHand = evaluateHand(selectedCards);
+        if (!validHand) {
+            showMessage("유효하지 않은 조합입니다! (싱글, 페어, 트리플, 또는 5장 족보를 맞춰주세요)");
+            return;
+        }
+
+        // 보드에 카드 그리기
+        const boardDiv = document.getElementById('board-cards');
+        boardDiv.innerHTML = '';
+        selectedCards.forEach(card => {
+            const cardEl = document.createElement('div');
+            cardEl.className = `card ${card.suit.class}`;
+            cardEl.style.transform = 'scale(0.9)'; // 보드 카드는 약간 작게
+            cardEl.innerHTML = `
+                <div class="number">${card.number}</div>
+                <div class="emoji">${card.suit.icon}</div>
+                <div class="number" style="transform: rotate(180deg);">${card.number}</div>
+            `;
+            boardDiv.appendChild(cardEl);
+        });
+
+        showMessage(`멋집니다! [${validHand}] 을(를) 냈습니다.`);
+
+        // 낸 카드 패에서 제거 후 재렌더링
+        playerHand = playerHand.filter(c => !c.selected);
+        renderHand();
+        
+        if(playerHand.length === 0) {
+            showMessage("🎉 승리하셨습니다! 카드를 모두 털었습니다!");
+        }
+    }
+
+    // 5. 족보 판별기 (Lexio 규칙)
+    function evaluateHand(cards) {
+        const count = cards.length;
+        if (count === 1) return "싱글 (Single)";
+        
+        const isAllSameNumber = cards.every(c => c.number === cards[0].number);
+        if (count === 2 && isAllSameNumber) return "페어 (Pair)";
+        if (count === 3 && isAllSameNumber) return "트리플 (Triple)";
+        
+        // 5장 족보 검사 (스트레이트, 플러시, 풀하우스 등)
+        if (count === 5) {
+            sortHand(cards);
+            const isFlush = cards.every(c => c.suit.id === cards[0].suit.id);
+            const isStraight = (
+                cards[1].rank === cards[0].rank + 1 &&
+                cards[2].rank === cards[1].rank + 1 &&
+                cards[3].rank === cards[2].rank + 1 &&
+                cards[4].rank === cards[3].rank + 1
+            );
+
+            // 숫자 빈도수 체크 (풀하우스, 포카드용)
+            const counts = {};
+            cards.forEach(c => counts[c.number] = (counts[c.number] || 0) + 1);
+            const values = Object.values(counts).sort((a,b) => b - a);
+
+            if (isStraight && isFlush) return "스트레이트 플러시 (Straight Flush)";
+            if (values[0] === 4) return "포카드 (Four of a Kind)";
+            if (values[0] === 3 && values[1] === 2) return "풀하우스 (Full House)";
+            if (isFlush) return "플러시 (Flush)";
+            if (isStraight) return "스트레이트 (Straight)";
+        }
+        
+        return null; // 족보가 아님
+    }
+
+    function passTurn() {
+        initGame(); // 테스트를 위해 패스를 누르면 게임 재시작으로 설정
+    }
+
+    function showMessage(msg) {
+        document.getElementById('message-box').innerText = msg;
+    }
+
+    // 페이지 로드 시 게임 시작
+    window.onload = initGame;
+
+</script>
+</body>
+</html>
