@@ -1,5 +1,5 @@
-// ★ 필수수정: Render에 배포한 서버 주소로 변경하세요!
-const socket = io('https://joshio.onrender.com');
+// ★ Render.com 주소로 수정하는 것을 잊지 마세요!
+const socket = io('https://여기에-본인의-render-서비스-이름.onrender.com'); 
 
 let myId = '';
 let currentRoomId = '';
@@ -12,31 +12,25 @@ const nicknameInput = document.getElementById('nicknameInput');
 const roomNameInput = document.getElementById('roomNameInput');
 const playerCountSelect = document.getElementById('playerCountSelect');
 
-// 로비: 방 목록 업데이트 수신
 socket.on('roomList', (rooms) => {
   roomListUl.innerHTML = '';
   if(rooms.length === 0) {
     roomListUl.innerHTML = '<li>현재 생성된 방이 없습니다.</li>';
     return;
   }
-  
   rooms.forEach(room => {
     const li = document.createElement('li');
     li.className = 'room-item';
-    li.innerHTML = `
-      <span><strong>${room.name}</strong> (${room.currentPlayers}/${room.maxPlayers}명)</span>
-      <button onclick="joinRoom('${room.id}')">입장</button>
-    `;
+    li.innerHTML = `<span><strong>${room.name}</strong> (${room.currentPlayers}/${room.maxPlayers}명)</span>
+                    <button onclick="joinRoom('${room.id}')">입장</button>`;
     roomListUl.appendChild(li);
   });
 });
 
-// 로비: 방 만들기 버튼 클릭
 document.getElementById('createRoomBtn').addEventListener('click', () => {
   const nickname = nicknameInput.value.trim();
   const roomName = roomNameInput.value.trim();
   const maxPlayers = playerCountSelect.value;
-  
   if (!nickname) return alert("닉네임을 입력하세요!");
   if (!roomName) return alert("방 제목을 입력하세요!");
 
@@ -44,11 +38,9 @@ document.getElementById('createRoomBtn').addEventListener('click', () => {
   enterGameMode();
 });
 
-// 로비: 만들어진 방에 입장하기
 window.joinRoom = function(roomId) {
   const nickname = nicknameInput.value.trim();
   if (!nickname) return alert("닉네임을 먼저 입력하세요!");
-  
   socket.emit('joinRoom', { roomId, nickname });
   enterGameMode();
 }
@@ -58,10 +50,8 @@ function enterGameMode() {
   gameBoardEl.style.display = 'block';
 }
 
-// 게임: 카드 렌더링 함수 (색상 반영)
 function renderCard(cardData, isHand = false) {
   const div = document.createElement('div');
-  // 카드의 수트에 맞는 클래스명 추가 (예: suit-🐉)
   div.className = `card suit-${cardData.suit}` + (isHand ? ' in-hand' : '');
   div.innerHTML = `<div class="number">${cardData.number}</div><div class="suit">${cardData.suit}</div>`;
   
@@ -81,12 +71,13 @@ function getComboName(cards) {
   if (cards.length === 2) return "페어";
   if (cards.length === 3) return "트리플";
   if (cards.length === 5) return "5장 조합";
-  return "잘못된 조합";
+  return "확인 불가 조합";
 }
 
-// 게임: 서버로부터 상태 업데이트 수신
 socket.on('updateRoom', (room) => {
   currentRoomId = room.id;
+  
+  // 1. 중앙 필드 그리기
   document.getElementById('center-field').innerHTML = '';
   room.field.forEach(card => {
     document.getElementById('center-field').appendChild(renderCard(card, false));
@@ -100,13 +91,31 @@ socket.on('updateRoom', (room) => {
   selectedCards = []; 
 
   let myIndex = -1;
+  
+  // 2. 플레이어 패 & 상대방 뒷면 그리기
   room.players.forEach((player, index) => {
     if (player.id === socket.id) {
       myIndex = index;
       player.hand.forEach(card => myHandEl.appendChild(renderCard(card, true)));
     } else {
+      // 상대방 렌더링 (이름 + 카드 뒷면 시각화)
       const opDiv = document.createElement('div');
-      opDiv.innerText = `${player.nickname}: ${player.hand.length}장`;
+      opDiv.className = 'opponent-area';
+      
+      const nameDiv = document.createElement('div');
+      nameDiv.className = 'opponent-name';
+      nameDiv.innerText = `${player.nickname} (${player.hand.length})`;
+      opDiv.appendChild(nameDiv);
+
+      const cardsDiv = document.createElement('div');
+      cardsDiv.className = 'opponent-hand';
+      // 남은 카드 개수만큼 뒷면 UI 생성
+      for(let i=0; i<player.hand.length; i++) {
+        const backCard = document.createElement('div');
+        backCard.className = 'card-back';
+        cardsDiv.appendChild(backCard);
+      }
+      opDiv.appendChild(cardsDiv);
       opponentsEl.appendChild(opDiv);
     }
   });
