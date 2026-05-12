@@ -1,5 +1,5 @@
-// ★ Render.com 주소로 수정하는 것을 잊지 마세요!
-const socket = io('https://여기에-본인의-render-서비스-이름.onrender.com'); 
+// ★ Render.com 주소로 꼭 수정하세요!
+const socket = io('https://joshio.onrender.com'); 
 
 let myId = '';
 let currentRoomId = '';
@@ -12,10 +12,11 @@ const nicknameInput = document.getElementById('nicknameInput');
 const roomNameInput = document.getElementById('roomNameInput');
 const playerCountSelect = document.getElementById('playerCountSelect');
 
+// 서버로부터 방 목록을 실시간으로 수신받아 그림
 socket.on('roomList', (rooms) => {
   roomListUl.innerHTML = '';
   if(rooms.length === 0) {
-    roomListUl.innerHTML = '<li>현재 생성된 방이 없습니다.</li>';
+    roomListUl.innerHTML = '<li class="room-item" style="justify-content:center; color:#888;">현재 생성된 방이 없습니다.</li>';
     return;
   }
   rooms.forEach(room => {
@@ -77,7 +78,6 @@ function getComboName(cards) {
 socket.on('updateRoom', (room) => {
   currentRoomId = room.id;
   
-  // 1. 중앙 필드 그리기
   document.getElementById('center-field').innerHTML = '';
   room.field.forEach(card => {
     document.getElementById('center-field').appendChild(renderCard(card, false));
@@ -92,13 +92,11 @@ socket.on('updateRoom', (room) => {
 
   let myIndex = -1;
   
-  // 2. 플레이어 패 & 상대방 뒷면 그리기
   room.players.forEach((player, index) => {
     if (player.id === socket.id) {
       myIndex = index;
       player.hand.forEach(card => myHandEl.appendChild(renderCard(card, true)));
     } else {
-      // 상대방 렌더링 (이름 + 카드 뒷면 시각화)
       const opDiv = document.createElement('div');
       opDiv.className = 'opponent-area';
       
@@ -109,7 +107,6 @@ socket.on('updateRoom', (room) => {
 
       const cardsDiv = document.createElement('div');
       cardsDiv.className = 'opponent-hand';
-      // 남은 카드 개수만큼 뒷면 UI 생성
       for(let i=0; i<player.hand.length; i++) {
         const backCard = document.createElement('div');
         backCard.className = 'card-back';
