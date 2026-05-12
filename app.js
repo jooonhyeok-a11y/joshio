@@ -1,5 +1,5 @@
-// ★ Render.com 주소로 꼭 수정하세요!
-const socket = io('https://joshio.onrender.com'); 
+// ★ Render.com 주소로 수정
+const socket = io('https://여기에-본인의-render-서비스-이름.onrender.com'); 
 
 let myId = '';
 let currentRoomId = '';
@@ -10,9 +10,12 @@ const gameBoardEl = document.getElementById('game-board');
 const roomListUl = document.getElementById('roomList');
 const nicknameInput = document.getElementById('nicknameInput');
 const roomNameInput = document.getElementById('roomNameInput');
-const playerCountSelect = document.getElementById('playerCountSelect');
 
-// 서버로부터 방 목록을 실시간으로 수신받아 그림
+// 에러 알림 처리 (잘못된 패 냈을 때)
+socket.on('playError', (msg) => {
+  alert(msg);
+});
+
 socket.on('roomList', (rooms) => {
   roomListUl.innerHTML = '';
   if(rooms.length === 0) {
@@ -31,7 +34,7 @@ socket.on('roomList', (rooms) => {
 document.getElementById('createRoomBtn').addEventListener('click', () => {
   const nickname = nicknameInput.value.trim();
   const roomName = roomNameInput.value.trim();
-  const maxPlayers = playerCountSelect.value;
+  const maxPlayers = document.getElementById('playerCountSelect').value;
   if (!nickname) return alert("닉네임을 입력하세요!");
   if (!roomName) return alert("방 제목을 입력하세요!");
 
@@ -67,14 +70,6 @@ function renderCard(cardData, isHand = false) {
   return div;
 }
 
-function getComboName(cards) {
-  if (cards.length === 1) return "싱글";
-  if (cards.length === 2) return "페어";
-  if (cards.length === 3) return "트리플";
-  if (cards.length === 5) return "5장 조합";
-  return "확인 불가 조합";
-}
-
 socket.on('updateRoom', (room) => {
   currentRoomId = room.id;
   
@@ -91,10 +86,12 @@ socket.on('updateRoom', (room) => {
   selectedCards = []; 
 
   let myIndex = -1;
+  let myCoins = 0;
   
   room.players.forEach((player, index) => {
     if (player.id === socket.id) {
       myIndex = index;
+      myCoins = player.coins;
       player.hand.forEach(card => myHandEl.appendChild(renderCard(card, true)));
     } else {
       const opDiv = document.createElement('div');
@@ -102,7 +99,8 @@ socket.on('updateRoom', (room) => {
       
       const nameDiv = document.createElement('div');
       nameDiv.className = 'opponent-name';
-      nameDiv.innerText = `${player.nickname} (${player.hand.length})`;
+      // 코인과 이름 표시
+      nameDiv.innerHTML = `🪙${player.coins}<br>${player.nickname} (${player.hand.length}장)`;
       opDiv.appendChild(nameDiv);
 
       const cardsDiv = document.createElement('div');
@@ -117,6 +115,8 @@ socket.on('updateRoom', (room) => {
     }
   });
 
+  document.getElementById('my-coins-display').innerText = `🪙 내 코인: ${myCoins}`;
+
   const turnIndicator = document.getElementById('my-turn-indicator');
   const playBtn = document.getElementById('playBtn');
   const passBtn = document.getElementById('passBtn');
@@ -124,7 +124,8 @@ socket.on('updateRoom', (room) => {
   if (room.isPlaying) {
       if (myIndex !== -1 && room.currentTurn === myIndex) {
         turnIndicator.style.display = 'block';
-        turnIndicator.innerText = "👉 내 턴입니다!";
+        // 선일 경우 텍스트 변경
+        turnIndicator.innerText = room.field.length === 0 ? "👉 내 턴! (선입니다)" : "👉 내 턴입니다!";
         playBtn.disabled = false;
         passBtn.disabled = false;
       } else {
@@ -140,8 +141,8 @@ socket.on('updateRoom', (room) => {
 
 document.getElementById('playBtn').addEventListener('click', () => {
   if (selectedCards.length === 0) return alert('카드를 선택해주세요!');
-  const comboName = getComboName(selectedCards);
-  socket.emit('playCards', { roomId: currentRoomId, cards: selectedCards, comboName });
+  // 서버에 검증을 맡기므로 cards만 보냄
+  socket.emit('playCards', { roomId: currentRoomId, cards: selectedCards });
 });
 
 document.getElementById('passBtn').addEventListener('click', () => {
