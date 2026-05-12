@@ -1,36 +1,13 @@
 @import url('https://fonts.googleapis.com/css2?family=Jua&display=swap');
 
-body {
-  margin: 0;
-  padding: 0;
-  font-family: 'Jua', sans-serif;
-  background-color: #333;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  overflow: hidden;
-}
+body { margin: 0; padding: 0; font-family: 'Jua', sans-serif; background-color: #222; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
 
-/* 로비 스타일 */
-#lobby {
-  background: white;
-  width: 90%;
-  max-width: 400px;
-  padding: 20px;
-  border-radius: 15px;
-  box-shadow: 0 10px 20px rgba(0,0,0,0.5);
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
+/* 로비 스타일 (이전과 동일) */
+#lobby { background: white; width: 90%; max-width: 400px; padding: 20px; border-radius: 15px; box-shadow: 0 10px 20px rgba(0,0,0,0.5); max-height: 90vh; overflow-y: auto; }
 #lobby h1 { text-align: center; color: #333; }
 .lobby-section { margin-bottom: 20px; padding: 15px; background: #f5f5f5; border-radius: 10px; }
 .lobby-section h3 { margin-top: 0; border-bottom: 2px solid #ccc; padding-bottom: 5px; }
-
-#lobby input, #lobby select, #lobby button {
-  width: 100%; box-sizing: border-box; margin: 5px 0; padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 5px; font-family: 'Jua', sans-serif;
-}
+#lobby input, #lobby select, #lobby button { width: 100%; box-sizing: border-box; margin: 5px 0; padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 5px; font-family: 'Jua', sans-serif; }
 #createRoomBtn { background-color: #ffcccc; border: 2px solid #ff6b6b; color: #333; cursor: pointer; font-weight: bold; }
 #roomList { list-style: none; padding: 0; margin: 0; }
 .room-item { background: white; border: 1px solid #ccc; padding: 10px; margin-bottom: 5px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
@@ -39,49 +16,51 @@ body {
 /* 게임 화면 */
 #game-board {
   width: 100%; max-width: 450px; height: 95vh;
-  /* 4단 상하관계 배경 */
-  background: linear-gradient(
-    to bottom,
-    #ffcccc 0%, #ffcccc 25%,   /* 1. 드래곤 (Red) */
-    #ccffcc 25%, #ccffcc 50%,   /* 2. 뱀 (Green) */
-    #e6e6e6 50%, #e6e6e6 75%,   /* 3. 늑대 (Gray) */
-    #d9c2a6 75%, #d9c2a6 100%   /* 4. 다람쥐 (Brown) */
-  );
-  border: 4px solid #111; border-radius: 10px; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  background: linear-gradient( to bottom, #ffcccc 0%, #ffcccc 25%, #ccffcc 25%, #ccffcc 50%, #e6e6e6 50%, #e6e6e6 75%, #d9c2a6 75%, #d9c2a6 100% );
+  border: 4px solid #111; border-radius: 10px; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden;
 }
 
-#combo-text {
-  position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%) rotate(-5deg); font-size: 45px; color: white; text-shadow: 3px 3px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000; z-index: 10; white-space: nowrap;
+/* 4단 배경 큰 이모지 */
+.bg-emoji {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  font-size: 100px; opacity: 0.15; z-index: 1; pointer-events: none; /* 클릭 방해 금지 */
 }
 
+#combo-text { position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%) rotate(-5deg); font-size: 35px; color: white; text-shadow: 3px 3px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000; z-index: 10; white-space: nowrap; }
 #center-field { position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%); display: flex; gap: 5px; z-index: 5; }
 
-/* 렉시오 타일(카드) 공통 디자인 */
-.card {
-  width: 42px; height: 60px; background-color: #111; /* 렉시오 특유의 검은 타일 */
-  border: 3px solid #fff; border-radius: 8px; display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 18px; cursor: pointer; user-select: none; transition: transform 0.1s; box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
-}
-
-/* 타일별 배경 매칭 컬러! */
-.card.suit-🐉 { border-color: #ff6b6b; color: #ff6b6b; } /* 드래곤 테두리/글씨 빨강 */
-.card.suit-🐍 { border-color: #4ade80; color: #4ade80; } /* 뱀 테두리/글씨 초록 */
-.card.suit-🐺 { border-color: #9ca3af; color: #d1d5db; } /* 늑대 테두리/글씨 회색 */
-.card.suit-🐿️ { border-color: #d97706; color: #d97706; } /* 다람쥐 테두리/글씨 갈색 */
-
+/* 렉시오 타일 파스텔톤 컬러 매칭 */
+.card { width: 42px; height: 60px; border-radius: 8px; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; user-select: none; transition: transform 0.1s; box-shadow: 2px 2px 5px rgba(0,0,0,0.3); border: 2px solid; background-color: #fff; z-index: 5;}
 .card .number { font-weight: bold; font-size: 22px; }
 .card .suit { font-size: 16px; margin-top: -5px; }
 
-#my-area { position: absolute; bottom: 10px; width: 100%; display: flex; flex-direction: column; align-items: center; }
-#my-hand { display: flex; gap: -5px; flex-wrap: wrap; justify-content: center; padding: 0 10px; margin-bottom: 10px;}
-.card.in-hand { margin-left: -15px; } /* 패 겹치게 */
+/* 드래곤: 연한 빨강 (확실한 Red 계열) */
+.card.suit-🐉 { background-color: #ffebeb; border-color: #cc0000; color: #cc0000; }
+/* 뱀: 연한 초록 (확실한 Green 계열) */
+.card.suit-🐍 { background-color: #ebfaeb; border-color: #00802b; color: #00802b; }
+/* 늑대: 연한 회색 */
+.card.suit-🐺 { background-color: #f2f2f2; border-color: #4d4d4d; color: #4d4d4d; }
+/* 다람쥐: 연한 갈색 (빨강과 구별되는 확실한 Brown 계열) */
+.card.suit-🐿️ { background-color: #f4e6d9; border-color: #8b4513; color: #8b4513; }
+
+/* 상대방 영역 시각화 */
+#opponents { position: absolute; top: 10px; width: 100%; display: flex; justify-content: space-around; z-index: 5; }
+.opponent-area { text-align: center; background: rgba(255,255,255,0.7); padding: 5px 10px; border-radius: 10px; border: 1px solid #333; }
+.opponent-name { font-size: 14px; font-weight: bold; margin-bottom: 5px; }
+.opponent-hand { display: flex; justify-content: center; gap: 0; }
+.card-back { width: 15px; height: 25px; background-color: #333; border: 1px solid #ddd; border-radius: 3px; margin-left: -10px; /* 겹치게 */ box-shadow: 1px 1px 2px rgba(0,0,0,0.5); }
+.card-back:first-child { margin-left: 0; }
+
+/* 내 패 영역 */
+#my-area { position: absolute; bottom: 10px; width: 100%; display: flex; flex-direction: column; align-items: center; z-index: 5; }
+#my-hand { display: flex; gap: 0; flex-wrap: wrap; justify-content: center; padding: 0 10px; margin-bottom: 10px;}
+.card.in-hand { margin-left: -18px; box-shadow: -2px 0px 5px rgba(0,0,0,0.2); } 
 .card.in-hand:first-child { margin-left: 0; }
 .card.in-hand:hover { transform: translateY(-15px); z-index: 10; }
-.card.selected { transform: translateY(-20px) !important; border-color: #ffeb3b !important; box-shadow: 0 0 15px #ffeb3b; z-index: 10; }
+.card.selected { transform: translateY(-20px) !important; border-color: #1890ff !important; box-shadow: 0 0 15px #1890ff; z-index: 10; }
 
 .controls { display: flex; gap: 10px; }
 .controls button { padding: 10px 25px; font-family: 'Jua', sans-serif; font-size: 18px; border-radius: 8px; border: 2px solid #000; cursor: pointer; }
 #playBtn { background-color: #ffcccc; }
 #passBtn { background-color: #e6e6e6; }
-
-#opponents { position: absolute; top: 10px; width: 100%; display: flex; justify-content: space-around; font-size: 15px; font-weight: bold; color: #000; background: rgba(255,255,255,0.7); padding: 5px 0; }
 #my-turn-indicator { background: #ffeb3b; color: #000; border: 2px solid #000; padding: 5px 20px; border-radius: 20px; margin-bottom: 15px; font-weight: bold; display: none; box-shadow: 2px 2px 0 #000; }
