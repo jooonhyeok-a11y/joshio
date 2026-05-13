@@ -2,7 +2,6 @@
 
 body { margin: 0; padding: 0; font-family: 'Jua', sans-serif; background-color: #222; display: flex; justify-content: center; align-items: center; height: 100vh; height: 100dvh; overflow: hidden; }
 
-/* 신규 추가: 정산 모달창 디자인 */
 #round-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; background: rgba(0,0,0,0.85); z-index: 2000; display: flex; flex-direction: column; justify-content: center; align-items: center; }
 .modal-box { background: #222; border: 3px solid #ffeb3b; border-radius: 15px; padding: 20px; width: 85%; max-width: 320px; text-align: center; color: #fff; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
 #modal-title { margin-top: 0; color: #ffeb3b; font-size: 26px; text-shadow: 2px 2px 0 #000; margin-bottom: 5px;}
@@ -41,8 +40,6 @@ body { margin: 0; padding: 0; font-family: 'Jua', sans-serif; background-color: 
 .card.suit-🌙 { background-color: #ebfaeb; border-color: #00802b; color: #00802b; }  
 .card.suit-⭐ { background-color: #fff9e6; border-color: #b38600; color: #b38600; }  
 .card.suit-☁️ { background-color: #e6f2ff; border-color: #0066cc; color: #0066cc; }  
-
-.gold-coin { display: inline-block; width: 14px; height: 14px; background: linear-gradient(135deg, #ffd700, #daa520); border-radius: 50%; border: 1px solid #b8860b; color: #fff; font-size: 9px; line-height: 14px; text-align: center; vertical-align: middle; margin-right: 3px; font-family: sans-serif; font-weight: bold; box-shadow: inset 1px 1px 2px rgba(255,255,255,0.5), 1px 1px 2px rgba(0,0,0,0.5); }
 
 #opponents { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; pointer-events: none; }
 .opponent-area { position: absolute; pointer-events: auto; text-align: center; background: rgba(255,255,255,0.85); padding: 5px 8px; border-radius: 8px; border: 2px solid #333; transition: 0.3s; width: max-content; box-shadow: 2px 2px 8px rgba(0,0,0,0.2);}
