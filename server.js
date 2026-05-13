@@ -137,7 +137,8 @@ io.on('connection', (socket) => {
 
   socket.on('createRoom', ({ roomName, maxPlayers, nickname, sessionId }) => {
     const roomId = 'room_' + Date.now();
-    rooms[roomId] = { id: roomId, name: roomName, maxPlayers: parseInt(maxPlayers), players: [], currentTurn: 0, field: [], comboText: "대기중", isPlaying: false, passCount: 0, currentRound: 1, maxRound: 5, roundSummary: null, isFirstPlay: false };
+    // ★ lastPlayedName 필드 추가
+    rooms[roomId] = { id: roomId, name: roomName, maxPlayers: parseInt(maxPlayers), players: [], currentTurn: 0, field: [], comboText: "대기중", lastPlayedName: "", isPlaying: false, passCount: 0, currentRound: 1, maxRound: 5, roundSummary: null, isFirstPlay: false };
     joinRoomLogic(socket, roomId, nickname, sessionId);
   });
 
@@ -147,7 +148,6 @@ io.on('connection', (socket) => {
     const room = rooms[roomId];
     if (!room) return socket.emit('playError', '방이 존재하지 않습니다.');
     
-    // ★ 새로고침 등으로 다시 방에 들어오려 할 때 클론(64코인 새 유저) 생성 방지
     const existingPlayer = room.players.find(p => p.sessionId === sessionId);
     if (existingPlayer) {
         if (existingPlayer.disconnectTimer) clearTimeout(existingPlayer.disconnectTimer);
@@ -181,7 +181,7 @@ io.on('connection', (socket) => {
     activePlayers.forEach((p, index) => {
       p.hand = deck.slice(index * cardsPerPlayer, (index + 1) * cardsPerPlayer);
     });
-    room.field = []; room.passCount = 0; room.comboText = ""; room.roundSummary = null;
+    room.field = []; room.passCount = 0; room.comboText = ""; room.roundSummary = null; room.lastPlayedName = "";
 
     if (isNewGame) {
       room.isFirstPlay = true;
@@ -203,6 +203,7 @@ io.on('connection', (socket) => {
         room.players.forEach(p => { p.coins = 64; p.isOut = false; p.hand = []; });
         room.isPlaying = true;
         dealCards(room, true);
+        // ★ room.currentTurn = 0; 삭제 완료! (이것이 선이 무조건 방장이 되는 버그의 원인이었습니다)
         io.to(roomId).emit('updateRoom', room);
     }
   });
@@ -223,9 +224,13 @@ io.on('connection', (socket) => {
     if (!canPlay(lastCombo, newCombo)) return socket.emit('playError', '더 높은 패를 내야 합니다.');
 
     room.field = cards; room.comboText = newCombo.name; room.passCount = 0; 
+    
     const playerIndex = room.players.findIndex(p => p.id === socket.id);
     const player = room.players[playerIndex];
     player.hand = player.hand.filter(hc => !cards.find(c => c.id === hc.id));
+    
+    // ★ 낸 사람 기록
+    room.lastPlayedName = player.nickname;
 
     const cardStrs = cards.map(c => `${c.suit}${c.number}`).join(', ');
     sendSystemLog(roomId, `[플레이] ${player.nickname}: ${newCombo.name} (${cardStrs})`);
@@ -234,7 +239,6 @@ io.on('connection', (socket) => {
       let summaryData = {};
       let bankruptPlayerName = null;
 
-      // ★ 모든 정산 데이터를 불변하는 sessionId 기준으로 매핑
       room.players.forEach(p => {
         const twoCount = p.hand.filter(c => Number(c.number) === 2).length;
         p.effCards = p.hand.length * Math.pow(2, twoCount);
@@ -256,7 +260,7 @@ io.on('connection', (socket) => {
       }
       
       activePlayers.forEach(p => {
-        p.coins = Number(p.coins) + Number(p.roundChange); // 철저한 Number 보정
+        p.coins = Number(p.coins) + Number(p.roundChange);
         if (p.coins <= 0) { p.coins = 0; p.isOut = true; bankruptPlayerName = p.nickname; }
         summaryData[p.sessionId].roundChange = p.roundChange;
         summaryData[p.sessionId].totalCoins = p.coins;
@@ -304,8 +308,10 @@ io.on('connection', (socket) => {
     room.passCount += 1;
     nextTurn(room);
     const activeCount = room.players.filter(p => !p.isOut && !p.isDisconnected).length;
+    
+    // 모두 패스하여 필드가 정리될 때
     if (room.passCount >= activeCount - 1) {
-      room.field = []; room.comboText = ""; room.passCount = 0; 
+      room.field = []; room.comboText = ""; room.passCount = 0; room.lastPlayedName = ""; 
     }
     io.to(roomId).emit('updateRoom', room);
   });
