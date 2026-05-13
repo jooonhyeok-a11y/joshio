@@ -17,7 +17,6 @@
       <div id="modal-my-tiles">내 남은 타일: 0개</div>
       <div id="modal-exchanges"></div>
       <div id="modal-total-change">나의 코인 변동: +0개</div>
-      <!-- 복구된 코인 이모지 -->
       <div id="modal-current-coins">🪙 내가 가진 코인: 64개</div>
       <button id="modal-confirm-btn">확인</button>
     </div>
@@ -31,7 +30,7 @@
     </div>
     <div class="lobby-section">
       <h3>내 정보</h3>
-      <input type="text" id="nicknameInput" placeholder="사용할 닉네임 입력 (필수)">
+      <input type="text" id="nicknameInput" placeholder="닉네임 입력 (필수)">
     </div>
     <div class="lobby-section">
       <h3>입장 가능한 방</h3>
@@ -41,55 +40,68 @@
       <h3>새 방 만들기</h3>
       <input type="text" id="roomNameInput" placeholder="방 제목">
       <select id="playerCountSelect">
-        <option value="3">3인 플레이 (1~9 사용)</option>
-        <option value="4" selected>4인 플레이 (1~13 사용)</option>
-        <option value="5">5인 플레이 (1~15 사용)</option>
+        <option value="3">3인 플레이</option>
+        <option value="4" selected>4인 플레이</option>
+        <option value="5">5인 플레이</option>
       </select>
       <button id="createRoomBtn">방 만들기</button>
     </div>
   </div>
 
   <div id="game-board" style="display: none;">
-    <div class="bg-emoji" style="top: 5%;">☀️</div>
+    <div class="bg-emoji" style="top: 10%;">☀️</div>
     <div class="bg-emoji" style="top: 30%;">🌙</div>
-    <div class="bg-emoji" style="top: 55%;">⭐</div>
-    <div class="bg-emoji" style="top: 80%;">☁️</div>
+    <div class="bg-emoji" style="top: 50%;">⭐</div>
+    <div class="bg-emoji" style="top: 70%;">☁️</div>
 
     <div id="combo-text">대기중</div>
     <div id="center-field"></div>
     <div id="opponents"></div>
     
+    <!-- 로그창: 왼쪽 최상단 -->
     <div id="system-log-container">
       <div id="system-logs"></div>
     </div>
-    <div id="hand-ranking-guide">
-      <div>1. 스트레이트</div>
-      <div>2. 플러시</div>
-      <div>3. 풀하우스</div>
-      <div>4. 포카드</div>
-      <div>5. 스티플</div>
+
+    <!-- 족보 및 라운드 표시: 우측 상단 -->
+    <div id="top-right-ui">
+      <div id="hand-ranking-guide">
+        <div>1. 스트레이트</div>
+        <div>2. 플러시</div>
+        <div>3. 풀하우스</div>
+        <div>4. 포카드</div>
+        <div>5. 스티플</div>
+      </div>
+      <div id="round-indicator-text">1 / 5 ROUND</div>
+      <div id="my-coins-display">🪙 64</div>
     </div>
 
+    <!-- 채팅창: 가운데 상단에서 좌측 하단으로 이동, 아코디언 형태로 변경 -->
     <div id="chat-container">
-      <div id="chat-messages"></div>
-      <div class="chat-input-area">
-        <input type="text" id="chatInput" placeholder="채팅 입력...">
-        <button id="sendChatBtn">전송</button>
+      <!-- 1줄 미리보기 영역 -->
+      <div id="chat-preview">💬 채팅창 열기...</div>
+      <!-- 확대 시 보이는 전체 영역 -->
+      <div id="chat-full">
+        <div id="chat-messages"></div>
+        <div class="chat-input-area">
+          <input type="text" id="chatInput" placeholder="채팅...">
+          <button id="sendChatBtn">전송</button>
+        </div>
+        <button id="closeChatBtn">닫기 ⬇</button>
       </div>
     </div>
 
+    <!-- 조작 버튼: 화면 70% 지점 고정 -->
     <div class="controls">
       <button id="playBtn">조합 내기</button>
       <button id="passBtn">패스</button>
     </div>
     
     <div id="my-area">
-      <button id="toggleSortBtn">🔀 현재: 숫자순</button>
+      <!-- 정렬 버튼 텍스트 변경 -->
+      <button id="toggleSortBtn">카드정렬 ↔️</button>
       <div class="info-bar">
-        <div id="round-indicator-text">현재 라운드: 1 / 5</div>
         <div id="combo-guide">선택한 카드: 없음</div>
-        <!-- 복구된 코인 이모지 -->
-        <div id="my-coins-display">🪙 내 코인: 64</div>
         <div id="my-turn-indicator">내 턴이 아닙니다</div>
       </div>
       <div id="my-hand"></div>
