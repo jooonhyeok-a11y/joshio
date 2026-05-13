@@ -1,19 +1,18 @@
-// ★ Render 주소로 변경 필수!
-const socket = io('https://joshio.onrender.com'); 
+// ★ 반드시 본인의 Render 주소로 교체하세요!
+const socket = io('https://joshio.onrender.com');
 
 let currentRoomId = '';
 let selectedCards = [];
 let myNickname = localStorage.getItem('lexio_nickname') || '';
-let sortMode = 'number'; // 'number' 또는 'suit'
+let sortMode = 'number'; 
 
-// 1. 고유 세션 ID 생성 (재접속용)
+// 고유 세션 ID 생성
 let sessionId = localStorage.getItem('lexio_sessionId');
 if (!sessionId) {
   sessionId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
   localStorage.setItem('lexio_sessionId', sessionId);
 }
 
-// 랭킹 판별용 로컬 함수 (정렬에 사용)
 function getLexioRank(number) { if (number === 1) return 14; if (number === 2) return 15; return number - 2; }
 function getSuitRank(suit) { if (suit === '☁️') return 1; if (suit === '⭐') return 2; if (suit === '🌙') return 3; if (suit === '☀️') return 4; return 0; }
 
@@ -69,7 +68,6 @@ const roomNameInput = document.getElementById('roomNameInput');
 
 socket.on('playError', (msg) => { alert(msg); });
 
-// 실시간 시스템 로그
 socket.on('systemLog', (msg) => {
   const logsBox = document.getElementById('system-logs');
   const div = document.createElement('div');
@@ -93,21 +91,40 @@ socket.on('roomList', (rooms) => {
   });
 });
 
+// ★ 닉네임 강력 검증 로직 추가
 document.getElementById('createRoomBtn').addEventListener('click', () => {
-  myNickname = nicknameInput.value.trim();
+  const inputNickname = nicknameInput.value.trim();
   const roomName = roomNameInput.value.trim();
   const maxPlayers = document.getElementById('playerCountSelect').value;
-  if (!myNickname) return alert("닉네임을 입력하세요!");
-  if (!roomName) return alert("방 제목을 입력하세요!");
+  
+  if (inputNickname === '') {
+    alert("닉네임을 반드시 입력해주세요!");
+    nicknameInput.focus();
+    return;
+  }
+  if (roomName === '') {
+    alert("방 제목을 입력해주세요!");
+    roomNameInput.focus();
+    return;
+  }
 
+  myNickname = inputNickname;
   localStorage.setItem('lexio_nickname', myNickname);
   socket.emit('createRoom', { roomName, maxPlayers, nickname: myNickname, sessionId });
   enterGameMode();
 });
 
+// ★ 닉네임 강력 검증 로직 추가 (방 입장 시)
 window.joinRoom = function(roomId) {
-  myNickname = nicknameInput.value.trim();
-  if (!myNickname) return alert("닉네임을 먼저 입력하세요!");
+  const inputNickname = nicknameInput.value.trim();
+  
+  if (inputNickname === '') {
+    alert("닉네임을 반드시 입력해주세요!");
+    nicknameInput.focus();
+    return;
+  }
+
+  myNickname = inputNickname;
   localStorage.setItem('lexio_nickname', myNickname);
   socket.emit('joinRoom', { roomId, nickname: myNickname, sessionId });
   enterGameMode();
@@ -119,12 +136,10 @@ function enterGameMode() {
   if(audioCtx.state === 'suspended') audioCtx.resume();
 }
 
-// 정렬 토글 기능
 document.getElementById('toggleSortBtn').addEventListener('click', () => {
   sortMode = sortMode === 'number' ? 'suit' : 'number';
   document.getElementById('toggleSortBtn').innerText = `🔀 현재: ${sortMode === 'number' ? '숫자순' : '문양순'}`;
-  // 강제로 화면 리렌더링을 위해 서버에서 데이터를 다시 받았다고 가정하고 현재 상태 재적용 필요 
-  // (가장 쉬운 방법은 카드 재정렬 함수 호출, 아래 updateRoom에서 처리하므로 여기선 상태만 변경 후 UI만 갱신)
+  
   const myHandEl = document.getElementById('my-hand');
   const cards = Array.from(myHandEl.children);
   cards.sort((a, b) => {
@@ -159,7 +174,7 @@ function renderCard(cardData, isHand = false) {
   const div = document.createElement('div');
   div.className = `card suit-${cardData.suit}` + (isHand ? ' in-hand' : '');
   div.innerHTML = `<div class="number">${cardData.number}</div><div class="suit">${cardData.suit}</div>`;
-  div.dataset.card = JSON.stringify(cardData); // 정렬을 위해 데이터 심어두기
+  div.dataset.card = JSON.stringify(cardData); 
   
   if (isHand) {
     div.addEventListener('click', () => {
@@ -175,7 +190,7 @@ function renderCard(cardData, isHand = false) {
 }
 
 socket.on('gameWin', ({ winnerId, winnerName }) => {
-  if (socket.id === winnerId || sessionId) { // 승리 애니메이션
+  if (socket.id === winnerId || sessionId) { 
     confetti({ particleCount: 150, spread: 100, origin: { y: 0.5 }, colors: ['#ff0000', '#00ff00', '#0000ff', '#ffff00'] });
     updateStats(true, 0); 
   }
@@ -184,7 +199,6 @@ socket.on('gameWin', ({ winnerId, winnerName }) => {
 socket.on('updateRoom', (room) => {
   currentRoomId = room.id;
   
-  // 입장하자마자 게임화면 띄우기 (재접속용)
   if(lobbyEl.style.display !== 'none') enterGameMode();
 
   document.getElementById('center-field').innerHTML = '';
@@ -215,7 +229,6 @@ socket.on('updateRoom', (room) => {
         coinsDisplay.innerHTML = `🪙 내 코인: ${player.coins}`; coinsDisplay.style.color = "#ffeb3b"; coinsDisplay.style.borderColor = "#fff";
         updateStats(false, player.coins); 
         
-        // 내 손패 정렬 로직 적용
         let myHandArr = [...player.hand];
         myHandArr.sort((a, b) => {
           if (sortMode === 'number') return getLexioRank(a.number) - getLexioRank(b.number) || getSuitRank(a.suit) - getSuitRank(b.suit);
