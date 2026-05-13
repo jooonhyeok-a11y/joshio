@@ -6,6 +6,7 @@ body {
   height: 100dvh; overflow: hidden; 
 }
 
+/* 로비 디자인 원상복구 */
 #lobby { background: white; width: 90%; max-width: 400px; padding: 20px; border-radius: 15px; box-shadow: 0 10px 20px rgba(0,0,0,0.5); max-height: 90vh; overflow-y: auto; }
 #lobby h1 { text-align: center; color: #333; margin-top: 0; }
 .lobby-section { margin-bottom: 15px; padding: 15px; background: #f5f5f5; border-radius: 10px; }
@@ -36,6 +37,7 @@ body {
 .card.suit-⭐ { background-color: #fff9e6; border-color: #b38600; color: #b38600; }  
 .card.suit-☁️ { background-color: #e6f2ff; border-color: #0066cc; color: #0066cc; }  
 
+/* 상대방 배치 및 세로 배열 버그 고침 (flex-direction row 유지) */
 #opponents { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; pointer-events: none; }
 .opponent-area { position: absolute; pointer-events: auto; text-align: center; background: rgba(255,255,255,0.8); padding: 4px 6px; border-radius: 8px; border: 1.5px solid #333; width: max-content; }
 .opponent-name { font-size: 10px; font-weight: bold; margin-bottom: 2px; }
@@ -86,7 +88,6 @@ body {
 .card.in-hand:hover { transform: translateY(-15px); z-index: 60; }
 .card.selected { transform: translateY(-25px) !important; border-color: #1890ff !important; box-shadow: 0 0 10px #1890ff; z-index: 60; }
 
-/* 정산 모달 및 순위표 디자인 */
 #round-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; background: rgba(0,0,0,0.9); z-index: 2000; display: flex; justify-content: center; align-items: center; }
 .modal-box { background: #222; border: 3px solid #ffeb3b; border-radius: 15px; padding: 20px; width: 85%; max-width: 300px; text-align: center; color: #fff; }
 #modal-title { margin-top: 0; color: #ffeb3b; font-size: 24px; text-shadow: 2px 2px 0 #000; margin-bottom: 5px;}
@@ -95,12 +96,9 @@ body {
 #modal-exchanges { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 10px 0; padding: 10px; background: #111; border-radius: 8px; }
 .exchange-item { font-size: 11px; padding: 4px 8px; background: #333; border-radius: 5px; }
 #modal-total-change { font-size: 18px; font-weight: bold; margin: 10px 0; }
-
-/* 순위표 CSS */
 #modal-final-rankings { margin: 15px 0; background: #111; padding: 10px; border-radius: 8px; border: 1px solid #444; }
 .ranking-item { display: flex; justify-content: space-between; padding: 6px 10px; border-bottom: 1px solid #333; font-size: 14px; color: #ccc;}
 .ranking-item:last-child { border-bottom: none; }
 .ranking-1st { color: #4ade80; font-weight: bold; font-size: 16px; }
-
 #modal-current-coins { font-size: 16px; margin: 10px 0; color: #ffeb3b; background: rgba(255,235,59,0.1); padding: 5px; border-radius: 8px;}
 #modal-confirm-btn { background: #ffeb3b; color: #000; border: 2px solid #000; padding: 12px 20px; border-radius: 8px; font-family: 'Jua'; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 10px; box-shadow: 2px 2px 0px #000;}
