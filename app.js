@@ -109,7 +109,6 @@ function renderCard(cardData, isHand = false) {
   return div;
 }
 
-// ★ Number()로 감싸서 문자열/숫자 타입 충돌 버그 방지
 function updateComboGuide() {
   const g = document.getElementById('combo-guide');
   if (selectedCards.length === 0) { g.innerText = "선택한 카드: 없음"; return; }
@@ -123,6 +122,7 @@ function updateComboGuide() {
   g.style.color = text.includes("잘못") || text.includes("불가능") ? "#ff6b6b" : "#4ade80";
 }
 
+// ★ 라운드 종료 / 게임 종료 판별 로직 추가
 function showRoundSummary(room) {
   const modal = document.getElementById('round-modal');
   let myData = null;
@@ -130,7 +130,52 @@ function showRoundSummary(room) {
     if (room.roundSummary.data[pid].nickname === myNickname) { myData = room.roundSummary.data[pid]; break; }
   }
   if (!myData) return;
-  document.getElementById('modal-title').innerText = room.roundSummary.isGameOver ? "🚩 경기 종료!" : "결과 리포트";
+
+  const titleEl = document.getElementById('modal-title');
+  const winnerAnnounceEl = document.getElementById('modal-winner-announce');
+  const roundDetailsEl = document.getElementById('modal-round-details');
+  const finalRankingsEl = document.getElementById('modal-final-rankings');
+  const btn = document.getElementById('modal-confirm-btn');
+
+  // 1) 전체 게임이 끝났을 경우 (파산 또는 5라운드 완료)
+  if (room.roundSummary.isGameOver) {
+    titleEl.innerText = room.roundSummary.gameEndReason;
+    winnerAnnounceEl.innerText = `🏆 ${room.roundSummary.overallWinnerName} 최종 우승!`;
+    winnerAnnounceEl.style.display = 'block';
+    
+    // 최종 순위표 그리기
+    finalRankingsEl.innerHTML = '';
+    room.roundSummary.finalRankings.forEach((r, idx) => {
+        const div = document.createElement('div');
+        div.className = 'ranking-item' + (idx === 0 ? ' ranking-1st' : '');
+        div.innerHTML = `<span>${idx + 1}위: ${r.nickname}</span><span>🪙 ${r.coins}</span>`;
+        finalRankingsEl.appendChild(div);
+    });
+    finalRankingsEl.style.display = 'block';
+    
+    btn.innerText = "새 게임 시작하기"; 
+    btn.onclick = () => { socket.emit('restartGame', { roomId: currentRoomId }); modal.style.display = 'none'; };
+    if(window.sumInt) clearInterval(window.sumInt); // 타이머 중지
+  } 
+  // 2) 일반 라운드가 끝났을 경우
+  else {
+    titleEl.innerText = "라운드 종료결산";
+    winnerAnnounceEl.style.display = 'none';
+    finalRankingsEl.style.display = 'none';
+    roundDetailsEl.style.display = 'block';
+    
+    let t = 10; 
+    btn.innerText = `확인 (다음 라운드로 ${t}초)`; 
+    btn.onclick = () => modal.style.display = 'none';
+    if(window.sumInt) clearInterval(window.sumInt);
+    window.sumInt = setInterval(() => { 
+      t--; 
+      if(t > 0) btn.innerText = `확인 (다음 라운드로 ${t}초)`; 
+      else { clearInterval(window.sumInt); modal.style.display = 'none'; }
+    }, 1000);
+  }
+
+  // 항상 보이는 상세 내역 (이번 라운드의 교환비)
   document.getElementById('modal-my-tiles').innerText = `내 남은 타일: ${myData.remainingTiles}개`;
   const exBox = document.getElementById('modal-exchanges'); exBox.innerHTML = '';
   for (const [opp, val] of Object.entries(myData.exchanges)) {
@@ -139,16 +184,9 @@ function showRoundSummary(room) {
     item.innerHTML = `${opp}: <span style="color:${val > 0 ? '#4ade80' : '#ff6b6b'}">${arrow} ${val}</span>`;
     exBox.appendChild(item);
   }
-  document.getElementById('modal-total-change').innerText = `변동량: ${myData.roundChange > 0 ? '+' : ''}${myData.roundChange}`;
-  document.getElementById('modal-current-coins').innerText = `🪙 내 코인: ${myData.totalCoins}개`;
-  const btn = document.getElementById('modal-confirm-btn');
-  if (room.roundSummary.isGameOver) {
-    btn.innerText = "새 게임 시작하기"; btn.onclick = () => { socket.emit('restartGame', { roomId: currentRoomId }); modal.style.display = 'none'; };
-  } else {
-    let t = 10; btn.innerText = `확인 (${t}초)`; btn.onclick = () => modal.style.display = 'none';
-    if(window.sumInt) clearInterval(window.sumInt);
-    window.sumInt = setInterval(() => { t--; if(t > 0) btn.innerText = `확인 (${t}초)`; else { clearInterval(window.sumInt); modal.style.display = 'none'; }}, 1000);
-  }
+  document.getElementById('modal-total-change').innerText = `나의 코인 변동: ${myData.roundChange > 0 ? '+' : ''}${myData.roundChange}개`;
+  document.getElementById('modal-current-coins').innerText = `🪙 내가 가진 코인: ${myData.totalCoins}개`;
+
   modal.style.display = 'flex';
 }
 
@@ -198,7 +236,6 @@ socket.on('updateRoom', (room) => {
     }
   });
 
-  // ★ 턴 UI 제어 - '내 턴입니다' 텍스트 제대로 뜨게 완벽 수정
   const turnIndicator = document.getElementById('my-turn-indicator');
   const playBtn = document.getElementById('playBtn');
   const passBtn = document.getElementById('passBtn');
@@ -229,7 +266,6 @@ document.getElementById('playBtn').addEventListener('click', () => {
 });
 document.getElementById('passBtn').addEventListener('click', () => socket.emit('passTurn', { roomId: currentRoomId }));
 
-// 채팅창 UI 열기/닫기 로직
 const chatPreview = document.getElementById('chat-preview');
 const chatContainer = document.getElementById('chat-container');
 const closeChatBtn = document.getElementById('closeChatBtn');
