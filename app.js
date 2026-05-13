@@ -1,17 +1,30 @@
 // ★ 반드시 본인의 Render 주소로 교체하세요!
-const socket = io('https://joshio.onrender.com');
+const socket = io('https://여기에-본인의-render-서비스-이름.onrender.com'); 
 
 let currentRoomId = '';
 let selectedCards = [];
 let myNickname = localStorage.getItem('lexio_nickname') || '';
 let sortMode = 'number'; 
 
-// 고유 세션 ID 생성
 let sessionId = localStorage.getItem('lexio_sessionId');
 if (!sessionId) {
   sessionId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
   localStorage.setItem('lexio_sessionId', sessionId);
 }
+
+// ★ 소켓 연결 시 자동 재접속 시도
+socket.on('connect', () => {
+  if (sessionId) {
+    socket.emit('checkReconnect', { sessionId });
+  }
+});
+
+// ★ 자동 재접속 성공 이벤트
+socket.on('reconnectSuccess', (roomId) => {
+  myNickname = localStorage.getItem('lexio_nickname') || '알수없음';
+  currentRoomId = roomId;
+  enterGameMode();
+});
 
 function getLexioRank(number) { if (number === 1) return 14; if (number === 2) return 15; return number - 2; }
 function getSuitRank(suit) { if (suit === '☁️') return 1; if (suit === '⭐') return 2; if (suit === '🌙') return 3; if (suit === '☀️') return 4; return 0; }
@@ -91,22 +104,13 @@ socket.on('roomList', (rooms) => {
   });
 });
 
-// ★ 닉네임 강력 검증 로직 추가
 document.getElementById('createRoomBtn').addEventListener('click', () => {
   const inputNickname = nicknameInput.value.trim();
   const roomName = roomNameInput.value.trim();
   const maxPlayers = document.getElementById('playerCountSelect').value;
   
-  if (inputNickname === '') {
-    alert("닉네임을 반드시 입력해주세요!");
-    nicknameInput.focus();
-    return;
-  }
-  if (roomName === '') {
-    alert("방 제목을 입력해주세요!");
-    roomNameInput.focus();
-    return;
-  }
+  if (inputNickname === '') return alert("닉네임을 반드시 입력해주세요!");
+  if (roomName === '') return alert("방 제목을 입력해주세요!");
 
   myNickname = inputNickname;
   localStorage.setItem('lexio_nickname', myNickname);
@@ -114,16 +118,9 @@ document.getElementById('createRoomBtn').addEventListener('click', () => {
   enterGameMode();
 });
 
-// ★ 닉네임 강력 검증 로직 추가 (방 입장 시)
 window.joinRoom = function(roomId) {
   const inputNickname = nicknameInput.value.trim();
-  
-  if (inputNickname === '') {
-    alert("닉네임을 반드시 입력해주세요!");
-    nicknameInput.focus();
-    return;
-  }
-
+  if (inputNickname === '') return alert("닉네임을 반드시 입력해주세요!");
   myNickname = inputNickname;
   localStorage.setItem('lexio_nickname', myNickname);
   socket.emit('joinRoom', { roomId, nickname: myNickname, sessionId });
@@ -226,7 +223,8 @@ socket.on('updateRoom', (room) => {
       if (player.isOut) {
         coinsDisplay.innerHTML = `💀 파산 (Out)`; coinsDisplay.style.color = "#ff6b6b"; coinsDisplay.style.borderColor = "#ff6b6b";
       } else {
-        coinsDisplay.innerHTML = `🪙 내 코인: ${player.coins}`; coinsDisplay.style.color = "#ffeb3b"; coinsDisplay.style.borderColor = "#fff";
+        coinsDisplay.innerHTML = `<span class="gold-coin">C</span> 내 코인: ${player.coins}`; 
+        coinsDisplay.style.color = "#ffeb3b"; coinsDisplay.style.borderColor = "#fff";
         updateStats(false, player.coins); 
         
         let myHandArr = [...player.hand];
@@ -245,7 +243,7 @@ socket.on('updateRoom', (room) => {
       nameDiv.className = 'opponent-name';
       if (player.isOut) nameDiv.innerHTML = `<span style="color:red;">💀파산</span><br>${player.nickname}`;
       else if (player.isDisconnected) nameDiv.innerHTML = `<span style="color:orange;">⏳연결끊김</span><br>${player.nickname}`;
-      else nameDiv.innerHTML = `🪙${player.coins}<br>${player.nickname} (${player.hand.length}장)`;
+      else nameDiv.innerHTML = `<span class="gold-coin">C</span>${player.coins}<br>${player.nickname} (${player.hand.length}장)`;
       opDiv.appendChild(nameDiv);
 
       const cardsDiv = document.createElement('div');
