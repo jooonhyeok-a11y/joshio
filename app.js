@@ -109,7 +109,6 @@ function renderCard(cardData, isHand = false) {
   return div;
 }
 
-// ★ 프론트엔드 가이드 창에서도 엄격한 Number 형변환으로 족보 안내 버그 해결
 function updateComboGuide() {
   const g = document.getElementById('combo-guide');
   if (selectedCards.length === 0) { g.innerText = "선택한 카드: 없음"; return; }
@@ -207,6 +206,9 @@ socket.on('updateRoom', (room) => {
 
   room.players.forEach((p, i) => {
     if (i === myIdx) {
+      // ★ 우측 상단 내 코인 UI 업데이트 로직 복구 완료!
+      document.getElementById('my-coins-display').innerText = `🪙 ${p.coins}`;
+      
       if (!p.isOut) {
         let handCopy = [...p.hand];
         handCopy.sort((a,b) => {
@@ -231,7 +233,6 @@ socket.on('updateRoom', (room) => {
     }
   });
 
-  // ★ 턴 UI - 내 턴입니다/아닙니다 정상 작동 
   const turnIndicator = document.getElementById('my-turn-indicator');
   const playBtn = document.getElementById('playBtn');
   const passBtn = document.getElementById('passBtn');
