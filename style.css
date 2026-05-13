@@ -6,7 +6,6 @@ body {
   height: 100dvh; overflow: hidden; 
 }
 
-/* 로비 디자인 원상복구 */
 #lobby { background: white; width: 90%; max-width: 400px; padding: 20px; border-radius: 15px; box-shadow: 0 10px 20px rgba(0,0,0,0.5); max-height: 90vh; overflow-y: auto; }
 #lobby h1 { text-align: center; color: #333; margin-top: 0; }
 .lobby-section { margin-bottom: 15px; padding: 15px; background: #f5f5f5; border-radius: 10px; }
@@ -37,7 +36,6 @@ body {
 .card.suit-⭐ { background-color: #fff9e6; border-color: #b38600; color: #b38600; }  
 .card.suit-☁️ { background-color: #e6f2ff; border-color: #0066cc; color: #0066cc; }  
 
-/* 상대방 배치 및 세로 배열 버그 고침 (flex-direction row 유지) */
 #opponents { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; pointer-events: none; }
 .opponent-area { position: absolute; pointer-events: auto; text-align: center; background: rgba(255,255,255,0.8); padding: 4px 6px; border-radius: 8px; border: 1.5px solid #333; width: max-content; }
 .opponent-name { font-size: 10px; font-weight: bold; margin-bottom: 2px; }
