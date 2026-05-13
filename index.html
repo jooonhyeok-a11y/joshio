@@ -14,9 +14,19 @@
   <div id="round-modal" style="display: none;">
     <div class="modal-box">
       <h2 id="modal-title">라운드 종료</h2>
-      <div id="modal-my-tiles">내 남은 타일: 0개</div>
-      <div id="modal-exchanges"></div>
-      <div id="modal-total-change">나의 코인 변동: +0개</div>
+      <!-- 최종 우승자 알림 (게임 종료 시에만 보임) -->
+      <h3 id="modal-winner-announce" style="display:none;"></h3>
+      
+      <!-- 라운드 상세 결산 내역 -->
+      <div id="modal-round-details">
+        <div id="modal-my-tiles">내 남은 타일: 0개</div>
+        <div id="modal-exchanges"></div>
+        <div id="modal-total-change">나의 코인 변동: +0개</div>
+      </div>
+
+      <!-- 최종 순위표 (게임 종료 시에만 보임) -->
+      <div id="modal-final-rankings" style="display:none;"></div>
+      
       <div id="modal-current-coins">🪙 내가 가진 코인: 64개</div>
       <button id="modal-confirm-btn">확인</button>
     </div>
