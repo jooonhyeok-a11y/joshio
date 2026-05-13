@@ -124,10 +124,9 @@ function updateComboGuide() {
 
 function showRoundSummary(room) {
   const modal = document.getElementById('round-modal');
-  let myData = null;
-  for (const pid in room.roundSummary.data) {
-    if (room.roundSummary.data[pid].nickname === myNickname) { myData = room.roundSummary.data[pid]; break; }
-  }
+  
+  // ★ 내 데이터 찾기를 오직 불변하는 sessionId로만 수행
+  const myData = room.roundSummary.data[sessionId];
   if (!myData) return;
 
   const titleEl = document.getElementById('modal-title');
@@ -201,13 +200,13 @@ socket.on('updateRoom', (room) => {
   const opps = document.getElementById('opponents'); opps.innerHTML = '';
   selectedCards = []; updateComboGuide();
 
+  // ★ 내 자리(Index)를 찾을 때도 무조건 sessionId 기준으로 탐색
   let myIdx = -1;
   room.players.forEach((p, i) => { if(p.sessionId === sessionId) myIdx = i; });
 
   room.players.forEach((p, i) => {
     if (i === myIdx) {
-      // ★ 우측 상단 내 코인 UI 업데이트 로직 복구 완료!
-      document.getElementById('my-coins-display').innerText = `🪙 ${p.coins}`;
+      document.getElementById('my-coins-display').innerText = `🪙 ${p.coins}`; // 코인 완벽 업데이트
       
       if (!p.isOut) {
         let handCopy = [...p.hand];
