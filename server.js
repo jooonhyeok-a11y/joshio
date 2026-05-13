@@ -12,33 +12,47 @@ const io = new Server(server, { cors: { origin: "*", methods: ["GET", "POST"] } 
 const rooms = {};
 const SUITS = ['☁️', '⭐', '🌙', '☀️']; 
 
+// ★ 렉시오 서열: 3이 가장 낮고 2가 가장 높음
 function getLexioRank(num) { 
   const number = Number(num);
   if (number === 1) return 14; 
   if (number === 2) return 15; 
   return number - 2; 
 }
-function getSuitRank(suit) { if (suit === '☁️') return 1; if (suit === '⭐') return 2; if (suit === '🌙') return 3; if (suit === '☀️') return 4; return 0; }
+// ★ 수트 서열: 구름 < 별 < 달 < 해
+function getSuitRank(suit) { 
+  if (suit === '☁️') return 1; 
+  if (suit === '⭐') return 2; 
+  if (suit === '🌙') return 3; 
+  if (suit === '☀️') return 4; 
+  return 0; 
+}
 
+// ★ 스트레이트 공식 룰 완벽 적용
 function getStraightInfo(cards) {
   const nums = cards.map(c => Number(c.number)).sort((a,b) => a-b);
   const str = nums.join(',');
-  if (str === '1,2,3,4,5') return { valid: true, rank: 999 }; 
-  if (str === '2,3,4,5,6') return { valid: true, rank: 998 }; 
-  if (str === '1,12,13,14,15') return { valid: true, rank: 997 }; 
+  
+  if (str === '1,2,3,4,5') return { valid: true, rank: 999 }; // 2번째로 높은 스트레이트
+  if (str === '2,3,4,5,6') return { valid: true, rank: 998 }; // 가장 높은 스트레이트
   
   let isConsecutive = true;
   for(let i=1; i<5; i++) { if (nums[i] !== nums[i-1] + 1) { isConsecutive = false; break; } }
-  if (isConsecutive) return { valid: true, rank: getLexioRank(nums[4]) };
+  
+  // 일반 스트레이트는 3부터 시작해야 정상 (1, 2는 최고 랭크이므로 위 두 케이스 외엔 섞일 수 없음)
+  if (isConsecutive && nums[0] >= 3) return { valid: true, rank: getLexioRank(nums[4]) };
+  
   return { valid: false, rank: 0 };
 }
 
-function getStraightHighestCardNum(cards) {
+function getStraightHighestCard(cards) {
   const nums = cards.map(c => Number(c.number)).sort((a,b) => a-b);
   const str = nums.join(',');
-  if (str === '1,2,3,4,5' || str === '2,3,4,5,6') return 2;
-  if (str === '1,12,13,14,15') return 1;
-  return nums[4]; 
+  if (str === '1,2,3,4,5' || str === '2,3,4,5,6') {
+      return cards.find(c => Number(c.number) === 2);
+  }
+  const highestNum = Math.max(...nums);
+  return cards.find(c => Number(c.number) === highestNum);
 }
 
 function generateDeck(playerCount) {
@@ -60,6 +74,7 @@ function getRoomList() {
 function analyzeCombo(cards) {
   cards.sort((a,b) => getLexioRank(a.number) - getLexioRank(b.number) || getSuitRank(a.suit) - getSuitRank(b.suit));
   const len = cards.length;
+  
   if (len === 1) return { valid: true, type: 1, rank: getLexioRank(cards[0].number), suitRank: getSuitRank(cards[0].suit), name: '싱글' };
   
   if (len === 2) {
@@ -79,11 +94,12 @@ function analyzeCombo(cards) {
     const counts = {};
     cards.forEach(c => counts[getLexioRank(c.number)] = (counts[getLexioRank(c.number)] || 0) + 1);
     const countVals = Object.values(counts).sort((a,b)=>b-a);
-    if (straightInfo.valid && isFlush) return { valid: true, type: 5, power: 5, rank: straightInfo.rank, suitRank: getSuitRank(cards.find(c => Number(c.number) === getStraightHighestCardNum(cards)).suit), name: "스트레이트 플러시" };
+
+    if (straightInfo.valid && isFlush) return { valid: true, type: 5, power: 5, rank: straightInfo.rank, suitRank: getSuitRank(getStraightHighestCard(cards).suit), name: "스트레이트 플러시" };
     if (countVals[0] === 4) return { valid: true, type: 5, power: 4, rank: Number(Object.keys(counts).find(k => counts[k] === 4)), suitRank: 4, name: "포카드" };
     if (countVals[0] === 3 && countVals[1] === 2) return { valid: true, type: 5, power: 3, rank: Number(Object.keys(counts).find(k => counts[k] === 3)), suitRank: 4, name: "풀하우스" };
     if (isFlush) return { valid: true, type: 5, power: 2, rank: Math.max(...cards.map(c=>getLexioRank(c.number))), suitRank: suits[0], name: "플러시" };
-    if (straightInfo.valid) return { valid: true, type: 5, power: 1, rank: straightInfo.rank, suitRank: getSuitRank(cards.find(c => Number(c.number) === getStraightHighestCardNum(cards)).suit), name: "스트레이트" };
+    if (straightInfo.valid) return { valid: true, type: 5, power: 1, rank: straightInfo.rank, suitRank: getSuitRank(getStraightHighestCard(cards).suit), name: "스트레이트" };
   }
   return { valid: false }; 
 }
@@ -135,7 +151,7 @@ io.on('connection', (socket) => {
 
   socket.on('createRoom', ({ roomName, maxPlayers, nickname, sessionId }) => {
     const roomId = 'room_' + Date.now();
-    rooms[roomId] = { id: roomId, name: roomName, maxPlayers: parseInt(maxPlayers), players: [], currentTurn: 0, field: [], comboText: "대기중", isPlaying: false, passCount: 0, currentRound: 1, maxRound: 5, roundSummary: null };
+    rooms[roomId] = { id: roomId, name: roomName, maxPlayers: parseInt(maxPlayers), players: [], currentTurn: 0, field: [], comboText: "대기중", isPlaying: false, passCount: 0, currentRound: 1, maxRound: 5, roundSummary: null, isFirstPlay: false };
     joinRoomLogic(socket, roomId, nickname, sessionId);
   });
 
@@ -150,13 +166,14 @@ io.on('connection', (socket) => {
     sendSystemLog(roomId, `[입장] ${nickname}님이 들어왔습니다.`);
     if (room.players.length === room.maxPlayers && !room.isPlaying) {
       room.isPlaying = true;
-      dealCards(room);
+      dealCards(room, true); // true = 새 게임(첫 라운드) 시작
     }
     io.to(roomId).emit('updateRoom', room);
     io.emit('roomList', getRoomList()); 
   }
 
-  function dealCards(room) {
+  // ★ isNewGame 플래그를 통해 파란색 3 규칙 판별
+  function dealCards(room, isNewGame = false) {
     room.players.forEach(p => p.hand = []);
     const activePlayers = room.players.filter(p => !p.isOut);
     const deck = generateDeck(activePlayers.length); 
@@ -165,6 +182,20 @@ io.on('connection', (socket) => {
       p.hand = deck.slice(index * cardsPerPlayer, (index + 1) * cardsPerPlayer);
     });
     room.field = []; room.passCount = 0; room.comboText = ""; room.roundSummary = null;
+
+    if (isNewGame) {
+      room.isFirstPlay = true;
+      let startPlayerIndex = 0;
+      room.players.forEach((p, idx) => {
+        if (p.hand.some(c => c.suit === '☁️' && Number(c.number) === 3)) {
+          startPlayerIndex = idx;
+        }
+      });
+      room.currentTurn = startPlayerIndex;
+      room.comboText = "파란색 3을 가진 플레이어부터 시작!";
+    } else {
+      room.isFirstPlay = false;
+    }
   }
 
   socket.on('restartGame', ({ roomId }) => {
@@ -173,8 +204,7 @@ io.on('connection', (socket) => {
         room.currentRound = 1;
         room.players.forEach(p => { p.coins = 64; p.isOut = false; p.hand = []; });
         room.isPlaying = true;
-        dealCards(room);
-        room.currentTurn = 0; 
+        dealCards(room, true); // 새 게임이므로 파란색 3을 찾음
         io.to(roomId).emit('updateRoom', room);
     }
   });
@@ -182,6 +212,16 @@ io.on('connection', (socket) => {
   socket.on('playCards', ({ roomId, cards }) => {
     const room = rooms[roomId];
     if (!room) return;
+
+    // ★ 렉시오 첫 턴 파란색 3 강제 포함 룰 검증
+    if (room.isFirstPlay) {
+      const hasCloud3 = cards.some(c => c.suit === '☁️' && Number(c.number) === 3);
+      if (!hasCloud3) {
+        return socket.emit('playError', '첫 라운드 첫 턴에는 반드시 파란색(구름) 3을 포함하여 내야 합니다!');
+      }
+      room.isFirstPlay = false; // 검증 통과 시 해제
+    }
+
     const newCombo = analyzeCombo(cards);
     if (!newCombo.valid) return socket.emit('playError', '유효하지 않은 조합입니다.');
     const lastCombo = room.field.length > 0 ? analyzeCombo(room.field) : null;
@@ -195,7 +235,6 @@ io.on('connection', (socket) => {
     const cardStrs = cards.map(c => `${c.suit}${c.number}`).join(', ');
     sendSystemLog(roomId, `[플레이] ${player.nickname}: ${newCombo.name} (${cardStrs})`);
 
-    // ★ 누군가 손을 다 털었을 때 (정산)
     if (player.hand.length === 0) {
       let summaryData = {};
       let bankruptPlayerName = null;
@@ -222,21 +261,14 @@ io.on('connection', (socket) => {
       
       activePlayers.forEach(p => {
         p.coins += p.roundChange;
-        // ★ 누군가 0원 이하가 되면 즉시 파산 처리 및 기록
-        if (p.coins <= 0) { 
-            p.coins = 0; 
-            p.isOut = true; 
-            bankruptPlayerName = p.nickname; 
-        }
+        if (p.coins <= 0) { p.coins = 0; p.isOut = true; bankruptPlayerName = p.nickname; }
         summaryData[p.id].roundChange = p.roundChange;
         summaryData[p.id].totalCoins = p.coins;
       });
 
       io.to(roomId).emit('gameWin', { winnerId: player.id, winnerName: player.nickname });
       
-      // ★ 전체 게임 종료 조건 (누군가 파산했거나, 라운드가 끝났을 때)
       const isGameOver = (bankruptPlayerName !== null) || room.currentRound >= room.maxRound || activePlayers.filter(p => !p.isOut).length <= 1;
-      
       let gameEndReason = "";
       let finalRankings = null;
       let overallWinnerName = "";
@@ -244,7 +276,6 @@ io.on('connection', (socket) => {
       if (isGameOver) {
           finalRankings = room.players.map(p => ({ nickname: p.nickname, coins: p.coins })).sort((a,b) => b.coins - a.coins);
           overallWinnerName = finalRankings[0].nickname;
-          
           if (bankruptPlayerName) gameEndReason = `${bankruptPlayerName} 파산! 경기 종료!`;
           else if (room.currentRound >= room.maxRound) gameEndReason = `${room.maxRound}라운드 완료! 경기 종료!`;
           else gameEndReason = "경기 종료!";
@@ -260,7 +291,9 @@ io.on('connection', (socket) => {
         io.to(roomId).emit('updateRoom', room);
         setTimeout(() => {
           if (room.roundSummary && !room.roundSummary.isGameOver) {
-            room.currentRound++; dealCards(room); room.currentTurn = playerIndex; 
+            room.currentRound++; 
+            dealCards(room, false); // 다음 라운드는 승자가 선
+            room.currentTurn = playerIndex; 
             io.to(roomId).emit('updateRoom', room); 
           }
         }, 10000);
