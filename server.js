@@ -109,15 +109,20 @@ function sendSystemLog(roomId, msg) {
 }
 
 io.on('connection', (socket) => {
+  // 접속 시 항상 방 목록을 즉시 보내줌
+  socket.emit('roomList', getRoomList());
   
   socket.on('checkReconnect', ({ sessionId }) => {
     if (!sessionId) return;
     for (const roomId in rooms) {
       const room = rooms[roomId];
       const player = room.players.find(p => p.sessionId === sessionId);
-      if (player && room.isPlaying) {
+      
+      // 대기방이든 게임 중이든 sessionId가 있으면 다시 방으로 밀어넣음
+      if (player) {
         if (player.disconnectTimer) clearTimeout(player.disconnectTimer);
-        player.id = socket.id; player.isDisconnected = false;
+        player.id = socket.id;
+        player.isDisconnected = false;
         socket.join(roomId);
         socket.emit('reconnectSuccess', room.id);
         sendSystemLog(roomId, `[재접속] ${player.nickname}님이 다시 연결되었습니다.`);
@@ -130,7 +135,6 @@ io.on('connection', (socket) => {
 
   socket.on('createRoom', ({ roomName, maxPlayers, nickname, sessionId }) => {
     const roomId = 'room_' + Date.now();
-    // ★ 라운드 관리 변수 추가
     rooms[roomId] = { id: roomId, name: roomName, maxPlayers: parseInt(maxPlayers), players: [], currentTurn: 0, field: [], comboText: "대기중", isPlaying: false, passCount: 0, currentRound: 1, maxRound: 5, roundSummary: null };
     joinRoomLogic(socket, roomId, nickname, sessionId);
   });
@@ -166,7 +170,6 @@ io.on('connection', (socket) => {
     room.field = []; room.passCount = 0; room.comboText = ""; room.roundSummary = null;
   }
 
-  // ★ 새 게임(전체 리셋) 로직
   socket.on('restartGame', ({ roomId }) => {
     const room = rooms[roomId];
     if (room && !room.isPlaying) {
@@ -196,11 +199,9 @@ io.on('connection', (socket) => {
     const cardStrs = cards.map(c => `${c.suit}${c.number}`).join(', ');
     sendSystemLog(roomId, `[플레이] ${player.nickname}: ${newCombo.name} (${cardStrs})`);
 
-    // ★ 누군가 손을 다 털었을 때 (라운드 종료 정산)
     if (player.hand.length === 0) {
       let summaryData = {};
       
-      // 1. 유효 카드수 계산 및 요약 객체 초기화
       room.players.forEach(p => {
         if (!p.isOut) {
           const twoCount = p.hand.filter(c => c.number === 2).length;
@@ -211,7 +212,6 @@ io.on('connection', (socket) => {
       });
       player.effCards = 0;
 
-      // 2. 1:1 교환 내역 저장
       const activePlayers = room.players.filter(p => !p.isOut);
       for (let i = 0; i < activePlayers.length; i++) {
         for (let j = i + 1; j < activePlayers.length; j++) {
@@ -219,13 +219,12 @@ io.on('connection', (socket) => {
           let diff = p1.effCards - p2.effCards;
           if (diff !== 0) {
             p1.roundChange -= diff; p2.roundChange += diff;
-            summaryData[p1.id].exchanges[p2.nickname] = -diff; // p1 입장에서의 득실
+            summaryData[p1.id].exchanges[p2.nickname] = -diff; 
             summaryData[p2.id].exchanges[p1.nickname] = diff;
           }
         }
       }
 
-      // 3. 실제 코인 반영 및 파산 검증
       activePlayers.forEach(p => {
         p.coins += p.roundChange;
         if (p.coins <= 0) { p.coins = 0; p.isOut = true; }
@@ -239,7 +238,6 @@ io.on('connection', (socket) => {
       const remainingActive = room.players.filter(p => !p.isOut);
       const isGameOver = remainingActive.length <= 1 || room.currentRound >= room.maxRound;
 
-      // ★ 정산 요약본 생성
       room.roundSummary = { isGameOver, data: summaryData, winnerName: player.nickname };
       room.comboText = isGameOver ? `🚩 경기 종료!` : `🎉 ${player.nickname} 라운드 승리!`;
 
@@ -249,7 +247,6 @@ io.on('connection', (socket) => {
         io.emit('roomList', getRoomList());
       } else {
         io.to(roomId).emit('updateRoom', room);
-        // 10초 뒤 자동 다음 라운드
         setTimeout(() => {
           if (room.roundSummary && !room.roundSummary.isGameOver) {
             room.currentRound++;
@@ -287,6 +284,7 @@ io.on('connection', (socket) => {
 
   socket.on('chatMessage', ({ roomId, nickname, msg }) => io.to(roomId).emit('chatMessage', { nickname, msg }));
 
+  // ★ 튕겼을 때 즉시 방을 삭제하지 않고 유예시간 60초 부여
   socket.on('disconnect', () => {
     for (const roomId in rooms) {
       const room = rooms[roomId];
@@ -294,31 +292,36 @@ io.on('connection', (socket) => {
       
       if (playerIndex !== -1) {
         const player = room.players[playerIndex];
-        if (!room.isPlaying) {
-          room.players.splice(playerIndex, 1);
-          if (room.players.length === 0) delete rooms[roomId];
-          else { sendSystemLog(roomId, `[퇴장] ${player.nickname}님이 나갔습니다.`); io.to(roomId).emit('updateRoom', room); }
-          io.emit('roomList', getRoomList());
-        } else {
-          player.isDisconnected = true;
+        player.isDisconnected = true;
+        
+        if (room.isPlaying) {
           sendSystemLog(roomId, `[끊김] ${player.nickname}님의 연결이 끊겼습니다. (60초 대기)`);
-          
           if (room.currentTurn === playerIndex) {
              room.passCount += 1; nextTurn(room);
              const activeCount = room.players.filter(p => !p.isOut && !p.isDisconnected).length;
              if (room.passCount >= activeCount - 1) { room.field = []; room.comboText = ""; room.passCount = 0; }
           }
-          io.to(roomId).emit('updateRoom', room);
+        }
+        
+        io.to(roomId).emit('updateRoom', room);
+        io.emit('roomList', getRoomList());
 
-          player.disconnectTimer = setTimeout(() => {
-            const idx = room.players.findIndex(p => p.id === player.id);
-            if (idx !== -1 && room.players[idx].isDisconnected) {
+        // 60초 유예 타이머 (대기방이든 게임 중이든 동일하게 적용)
+        player.disconnectTimer = setTimeout(() => {
+          const idx = room.players.findIndex(p => p.id === player.id);
+          if (idx !== -1 && room.players[idx].isDisconnected) {
+            if (room.isPlaying) {
               room.players[idx].isOut = true; 
               sendSystemLog(roomId, `[강퇴] ${player.nickname}님이 미복귀로 파산 처리되었습니다.`);
-              io.to(roomId).emit('updateRoom', room);
+            } else {
+              // 게임 시작 전 대기실이었으면 방에서 제거
+              room.players.splice(idx, 1);
+              if (room.players.length === 0) delete rooms[roomId];
             }
-          }, 60000);
-        }
+            io.to(roomId).emit('updateRoom', room);
+            io.emit('roomList', getRoomList());
+          }
+        }, 60000);
         break;
       }
     }
