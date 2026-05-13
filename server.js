@@ -12,7 +12,6 @@ const io = new Server(server, { cors: { origin: "*", methods: ["GET", "POST"] } 
 const rooms = {};
 const SUITS = ['☁️', '⭐', '🌙', '☀️']; 
 
-// ★ Number()로 감싸서 문자열/숫자 타입 충돌 버그 원천 차단
 function getLexioRank(num) { 
   const number = Number(num);
   if (number === 1) return 14; 
@@ -63,7 +62,6 @@ function analyzeCombo(cards) {
   const len = cards.length;
   if (len === 1) return { valid: true, type: 1, rank: getLexioRank(cards[0].number), suitRank: getSuitRank(cards[0].suit), name: '싱글' };
   
-  // ★ 페어/트리플 타입 충돌 버그 해결
   if (len === 2) {
     if (Number(cards[0].number) !== Number(cards[1].number)) return { valid: false };
     return { valid: true, type: 2, rank: getLexioRank(cards[0].number), suitRank: getSuitRank(cards[1].suit), name: '페어' }; 
@@ -197,14 +195,18 @@ io.on('connection', (socket) => {
     const cardStrs = cards.map(c => `${c.suit}${c.number}`).join(', ');
     sendSystemLog(roomId, `[플레이] ${player.nickname}: ${newCombo.name} (${cardStrs})`);
 
+    // ★ 누군가 손을 다 털었을 때 (정산)
     if (player.hand.length === 0) {
       let summaryData = {};
+      let bankruptPlayerName = null;
+
       room.players.forEach(p => {
         const twoCount = p.hand.filter(c => Number(c.number) === 2).length;
         p.effCards = p.hand.length * Math.pow(2, twoCount);
         p.roundChange = 0;
         summaryData[p.id] = { nickname: p.nickname, remainingTiles: p.hand.length, exchanges: {}, roundChange: 0, totalCoins: 0 };
       });
+
       const activePlayers = room.players.filter(p => !p.isOut);
       for (let i = 0; i < activePlayers.length; i++) {
         for (let j = i + 1; j < activePlayers.length; j++) {
@@ -217,17 +219,40 @@ io.on('connection', (socket) => {
           }
         }
       }
+      
       activePlayers.forEach(p => {
         p.coins += p.roundChange;
-        if (p.coins <= 0) { p.coins = 0; p.isOut = true; }
+        // ★ 누군가 0원 이하가 되면 즉시 파산 처리 및 기록
+        if (p.coins <= 0) { 
+            p.coins = 0; 
+            p.isOut = true; 
+            bankruptPlayerName = p.nickname; 
+        }
         summaryData[p.id].roundChange = p.roundChange;
         summaryData[p.id].totalCoins = p.coins;
       });
+
       io.to(roomId).emit('gameWin', { winnerId: player.id, winnerName: player.nickname });
-      const remainingActive = room.players.filter(p => !p.isOut);
-      const isGameOver = remainingActive.length <= 1 || room.currentRound >= room.maxRound;
-      room.roundSummary = { isGameOver, data: summaryData, winnerName: player.nickname };
+      
+      // ★ 전체 게임 종료 조건 (누군가 파산했거나, 라운드가 끝났을 때)
+      const isGameOver = (bankruptPlayerName !== null) || room.currentRound >= room.maxRound || activePlayers.filter(p => !p.isOut).length <= 1;
+      
+      let gameEndReason = "";
+      let finalRankings = null;
+      let overallWinnerName = "";
+
+      if (isGameOver) {
+          finalRankings = room.players.map(p => ({ nickname: p.nickname, coins: p.coins })).sort((a,b) => b.coins - a.coins);
+          overallWinnerName = finalRankings[0].nickname;
+          
+          if (bankruptPlayerName) gameEndReason = `${bankruptPlayerName} 파산! 경기 종료!`;
+          else if (room.currentRound >= room.maxRound) gameEndReason = `${room.maxRound}라운드 완료! 경기 종료!`;
+          else gameEndReason = "경기 종료!";
+      }
+
+      room.roundSummary = { isGameOver, data: summaryData, winnerName: player.nickname, gameEndReason, finalRankings, overallWinnerName };
       room.comboText = isGameOver ? `🚩 경기 종료!` : `🎉 ${player.nickname} 승리!`;
+      
       if (isGameOver) {
         room.isPlaying = false;
         io.to(roomId).emit('updateRoom', room);
