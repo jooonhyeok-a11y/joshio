@@ -10,17 +10,15 @@
 </head>
 <body>
 
-  <!-- 라운드 종료 정산 모달창 (신규) -->
+  <!-- 라운드 종료 정산 모달창 -->
   <div id="round-modal" style="display: none;">
     <div class="modal-box">
       <h2 id="modal-title">라운드 종료</h2>
       <div id="modal-my-tiles">내 남은 타일: 0개</div>
-      
-      <!-- 상호 교환 상세 내역 -->
       <div id="modal-exchanges"></div>
-      
       <div id="modal-total-change">나의 코인 변동: +0개</div>
-      <div id="modal-current-coins"><span class="gold-coin">C</span> 내가 가진 코인: 64개</div>
+      <!-- 복구된 코인 이모지 -->
+      <div id="modal-current-coins">🪙 내가 가진 코인: 64개</div>
       <button id="modal-confirm-btn">확인</button>
     </div>
   </div>
@@ -88,10 +86,10 @@
     <div id="my-area">
       <button id="toggleSortBtn">🔀 현재: 숫자순</button>
       <div class="info-bar">
-        <!-- 현재 라운드 표시기 (신규) -->
         <div id="round-indicator-text">현재 라운드: 1 / 5</div>
         <div id="combo-guide">선택한 카드: 없음</div>
-        <div id="my-coins-display"><span class="gold-coin">C</span> 내 코인: 64</div>
+        <!-- 복구된 코인 이모지 -->
+        <div id="my-coins-display">🪙 내 코인: 64</div>
         <div id="my-turn-indicator">내 턴이 아닙니다</div>
       </div>
       <div id="my-hand"></div>
