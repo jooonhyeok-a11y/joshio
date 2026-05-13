@@ -6,11 +6,21 @@
   <title>Lexio Online</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  <!-- 화려한 폭죽 애니메이션을 위한 라이브러리 -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 </head>
 <body>
 
+  <!-- 로비 화면 -->
   <div id="lobby">
     <h1>렉시오 온라인 ☀️</h1>
+    
+    <!-- 내 기록 섹션 (새로 추가됨) -->
+    <div class="lobby-section stats-section">
+      <h3>🏆 내 기록</h3>
+      <p id="stats-display">누적 승리: 0회 | 최고 코인: 0개</p>
+    </div>
+
     <div class="lobby-section">
       <h3>내 정보</h3>
       <input type="text" id="nicknameInput" placeholder="사용할 닉네임 입력">
@@ -31,6 +41,7 @@
     </div>
   </div>
 
+  <!-- 게임 화면 -->
   <div id="game-board" style="display: none;">
     <div class="bg-emoji" style="top: 5%;">☀️</div>
     <div class="bg-emoji" style="top: 30%;">🌙</div>
@@ -41,10 +52,19 @@
     <div id="center-field"></div>
     <div id="opponents"></div>
     
+    <!-- 채팅 영역 -->
+    <div id="chat-container">
+      <div id="chat-messages"></div>
+      <div class="chat-input-area">
+        <input type="text" id="chatInput" placeholder="채팅 입력...">
+        <button id="sendChatBtn">전송</button>
+      </div>
+    </div>
+    
     <div id="my-area">
-      <!-- 내 코인 표시 영역 추가 -->
-      <div id="my-coins-display">🪙 내 코인: 100</div>
-      
+      <!-- 족보 가이드 (새로 추가됨) -->
+      <div id="combo-guide">선택한 카드: 없음</div>
+      <div id="my-coins-display">🪙 내 코인: 64</div>
       <div id="my-turn-indicator">내 턴이 아닙니다</div>
       <div id="my-hand"></div>
       <div class="controls">
