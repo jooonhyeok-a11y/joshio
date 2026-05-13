@@ -2,7 +2,6 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <!-- 모바일 꽉 찬 화면 대응을 위한 viewport 설정 추가 -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Lexio Online</title>
   <link rel="stylesheet" href="style.css">
@@ -11,7 +10,21 @@
 </head>
 <body>
 
-  <!-- 로비 화면 -->
+  <!-- 라운드 종료 정산 모달창 (신규) -->
+  <div id="round-modal" style="display: none;">
+    <div class="modal-box">
+      <h2 id="modal-title">라운드 종료</h2>
+      <div id="modal-my-tiles">내 남은 타일: 0개</div>
+      
+      <!-- 상호 교환 상세 내역 -->
+      <div id="modal-exchanges"></div>
+      
+      <div id="modal-total-change">나의 코인 변동: +0개</div>
+      <div id="modal-current-coins"><span class="gold-coin">C</span> 내가 가진 코인: 64개</div>
+      <button id="modal-confirm-btn">확인</button>
+    </div>
+  </div>
+
   <div id="lobby">
     <h1>렉시오 온라인 ☀️</h1>
     <div class="lobby-section stats-section">
@@ -38,7 +51,6 @@
     </div>
   </div>
 
-  <!-- 게임 화면 -->
   <div id="game-board" style="display: none;">
     <div class="bg-emoji" style="top: 5%;">☀️</div>
     <div class="bg-emoji" style="top: 30%;">🌙</div>
@@ -47,11 +59,8 @@
 
     <div id="combo-text">대기중</div>
     <div id="center-field"></div>
-    
-    <!-- 1. 상단 중앙: 상대방 정보 -->
     <div id="opponents"></div>
     
-    <!-- 2. 상단 좌/우 (상대 패 아래로 이동됨) -->
     <div id="system-log-container">
       <div id="system-logs"></div>
     </div>
@@ -63,7 +72,6 @@
       <div>5. 스티플</div>
     </div>
 
-    <!-- 3. 중앙 좌측: 채팅창 -->
     <div id="chat-container">
       <div id="chat-messages"></div>
       <div class="chat-input-area">
@@ -72,18 +80,18 @@
       </div>
     </div>
 
-    <!-- 4. 중앙 우측: 조작 버튼 -->
     <div class="controls">
       <button id="playBtn">조합 내기</button>
       <button id="passBtn">패스</button>
     </div>
     
-    <!-- 5. 하단 전체: 내 정보 및 카드 패 -->
     <div id="my-area">
       <button id="toggleSortBtn">🔀 현재: 숫자순</button>
       <div class="info-bar">
+        <!-- 현재 라운드 표시기 (신규) -->
+        <div id="round-indicator-text">현재 라운드: 1 / 5</div>
         <div id="combo-guide">선택한 카드: 없음</div>
-        <div id="my-coins-display">🪙 내 코인: 64</div>
+        <div id="my-coins-display"><span class="gold-coin">C</span> 내 코인: 64</div>
         <div id="my-turn-indicator">내 턴이 아닙니다</div>
       </div>
       <div id="my-hand"></div>
