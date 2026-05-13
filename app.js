@@ -6,7 +6,7 @@ let selectedCards = [];
 let myNickname = localStorage.getItem('lexio_nickname') || '';
 let sortMode = 'number'; 
 let currentSummaryStr = null; 
-let lastTurnWasMe = false; // 턴 알림음 중복 방지용
+let lastTurnWasMe = false; 
 
 let sessionId = localStorage.getItem('lexio_sessionId');
 if (!sessionId) {
@@ -20,7 +20,12 @@ socket.on('reconnectSuccess', (roomId) => {
   currentRoomId = roomId; enterGameMode();
 });
 
-function getLexioRank(number) { if (number === 1) return 14; if (number === 2) return 15; return number - 2; }
+function getLexioRank(num) { 
+  const number = Number(num);
+  if (number === 1) return 14; 
+  if (number === 2) return 15; 
+  return number - 2; 
+}
 function getSuitRank(suit) { if (suit === '☁️') return 1; if (suit === '⭐') return 2; if (suit === '🌙') return 3; if (suit === '☀️') return 4; return 0; }
 
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -104,10 +109,18 @@ function renderCard(cardData, isHand = false) {
   return div;
 }
 
+// ★ Number()로 감싸서 문자열/숫자 타입 충돌 버그 방지
 function updateComboGuide() {
   const g = document.getElementById('combo-guide');
   if (selectedCards.length === 0) { g.innerText = "선택한 카드: 없음"; return; }
-  g.innerText = `현재 선택: ${selectedCards.length}장`;
+  const len = selectedCards.length; let text = "알 수 없는 조합";
+  if(len === 1) text = "싱글 (1장)";
+  if(len === 2) text = Number(selectedCards[0].number) === Number(selectedCards[1].number) ? "페어 (2장)" : "잘못된 조합 (페어 아님)";
+  if(len === 3) text = (Number(selectedCards[0].number) === Number(selectedCards[1].number) && Number(selectedCards[1].number) === Number(selectedCards[2].number)) ? "트리플 (3장)" : "잘못된 조합";
+  if(len === 5) text = "5장 조합 (제출 시 검증됨)";
+  if(len === 4 || len > 5) text = "불가능한 장수 (1,2,3,5장만 가능)";
+  g.innerText = `현재 선택: ${text}`;
+  g.style.color = text.includes("잘못") || text.includes("불가능") ? "#ff6b6b" : "#4ade80";
 }
 
 function showRoundSummary(room) {
@@ -161,7 +174,6 @@ socket.on('updateRoom', (room) => {
 
   room.players.forEach((p, i) => {
     if (i === myIdx) {
-      document.getElementById('my-coins-display').innerText = `🪙 ${p.coins}`;
       if (!p.isOut) {
         let handCopy = [...p.hand];
         handCopy.sort((a,b) => {
@@ -186,7 +198,7 @@ socket.on('updateRoom', (room) => {
     }
   });
 
-  // ★ 턴 UI 제어 완벽 복구
+  // ★ 턴 UI 제어 - '내 턴입니다' 텍스트 제대로 뜨게 완벽 수정
   const turnIndicator = document.getElementById('my-turn-indicator');
   const playBtn = document.getElementById('playBtn');
   const passBtn = document.getElementById('passBtn');
@@ -195,23 +207,18 @@ socket.on('updateRoom', (room) => {
     if (myIdx !== -1 && room.currentTurn === myIdx && !room.players[myIdx].isOut) {
       turnIndicator.style.display = 'block';
       turnIndicator.innerText = room.field.length === 0 ? "👉 내 턴! (선입니다)" : "👉 내 턴입니다!";
-      playBtn.disabled = false;
-      passBtn.disabled = false;
-      
-      // 사운드는 내 턴이 처음 시작될 때 딱 한 번만 울리게 처리
-      if (!lastTurnWasMe) { playSound('turn'); }
+      playBtn.disabled = false; passBtn.disabled = false;
+      if (!lastTurnWasMe) playSound('turn');
       lastTurnWasMe = true;
     } else {
       turnIndicator.style.display = 'none';
-      playBtn.disabled = true;
-      passBtn.disabled = true;
+      playBtn.disabled = true; passBtn.disabled = true;
       lastTurnWasMe = false;
     }
   } else {
     turnIndicator.style.display = 'block';
     turnIndicator.innerText = `대기/종료 (${room.players.length}/${room.maxPlayers}명)`;
-    playBtn.disabled = true;
-    passBtn.disabled = true;
+    playBtn.disabled = true; passBtn.disabled = true;
     lastTurnWasMe = false;
   }
 });
