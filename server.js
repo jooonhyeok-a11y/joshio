@@ -12,19 +12,8 @@ const io = new Server(server, { cors: { origin: "*", methods: ["GET", "POST"] } 
 const rooms = {};
 const SUITS = ['☁️', '⭐', '🌙', '☀️']; 
 
-function getLexioRank(number) {
-  if (number === 1) return 14;
-  if (number === 2) return 15;
-  return number - 2; 
-}
-
-function getSuitRank(suit) {
-  if (suit === '☁️') return 1;
-  if (suit === '⭐') return 2;
-  if (suit === '🌙') return 3;
-  if (suit === '☀️') return 4;
-  return 0;
-}
+function getLexioRank(number) { if (number === 1) return 14; if (number === 2) return 15; return number - 2; }
+function getSuitRank(suit) { if (suit === '☁️') return 1; if (suit === '⭐') return 2; if (suit === '🌙') return 3; if (suit === '☀️') return 4; return 0; }
 
 function getStraightInfo(cards) {
   const nums = cards.map(c => c.number).sort((a,b) => a-b);
@@ -108,10 +97,8 @@ function canPlay(lastCombo, newCombo) {
 
 function nextTurn(room) {
   let next = (room.currentTurn + 1) % room.players.length;
-  // 파산하거나 접속이 끊긴(isDisconnected) 사람은 패스
   while (room.players[next].isOut || room.players[next].isDisconnected) {
     next = (next + 1) % room.players.length;
-    // 무한 루프 방지
     if (next === room.currentTurn) break; 
   }
   room.currentTurn = next;
@@ -122,7 +109,29 @@ function sendSystemLog(roomId, msg) {
 }
 
 io.on('connection', (socket) => {
-  socket.emit('roomList', getRoomList());
+  
+  // ★ 자동 재접속 체크 로직 (신규)
+  socket.on('checkReconnect', ({ sessionId }) => {
+    if (!sessionId) return;
+    for (const roomId in rooms) {
+      const room = rooms[roomId];
+      const player = room.players.find(p => p.sessionId === sessionId);
+      
+      // 진행 중인 게임에 내 정보가 있다면 즉시 복귀
+      if (player && room.isPlaying) {
+        if (player.disconnectTimer) clearTimeout(player.disconnectTimer);
+        player.id = socket.id;
+        player.isDisconnected = false;
+        socket.join(roomId);
+        socket.emit('reconnectSuccess', room.id);
+        sendSystemLog(roomId, `[재접속] ${player.nickname}님이 다시 연결되었습니다.`);
+        io.to(roomId).emit('updateRoom', room);
+        return;
+      }
+    }
+    // 재접속할 방이 없으면 정상적으로 방 목록 전달
+    socket.emit('roomList', getRoomList());
+  });
 
   socket.on('createRoom', ({ roomName, maxPlayers, nickname, sessionId }) => {
     const roomId = 'room_' + Date.now();
@@ -135,19 +144,6 @@ io.on('connection', (socket) => {
   function joinRoomLogic(socket, roomId, nickname, sessionId) {
     const room = rooms[roomId];
     if (!room) return socket.emit('playError', '방이 존재하지 않습니다.');
-
-    // 1. 재접속 체크
-    const existingPlayer = room.players.find(p => p.sessionId === sessionId);
-    if (existingPlayer) {
-      if (existingPlayer.disconnectTimer) clearTimeout(existingPlayer.disconnectTimer);
-      existingPlayer.id = socket.id;
-      existingPlayer.isDisconnected = false;
-      existingPlayer.nickname = nickname; // 닉네임 변경 반영
-      socket.join(roomId);
-      sendSystemLog(roomId, `[재접속] ${nickname}님이 돌아왔습니다!`);
-      io.to(roomId).emit('updateRoom', room);
-      return;
-    }
 
     if (room.players.length >= room.maxPlayers) return socket.emit('playError', '방이 가득 찼습니다.');
 
@@ -188,9 +184,8 @@ io.on('connection', (socket) => {
     const player = room.players[playerIndex];
     player.hand = player.hand.filter(hc => !cards.find(c => c.id === hc.id));
 
-    // 로그 기록
     const cardStrs = cards.map(c => `${c.suit}${c.number}`).join(', ');
-    sendSystemLog(roomId, `[플레이] ${player.nickname}님이 ${newCombo.name} 제출 (${cardStrs})`);
+    sendSystemLog(roomId, `[플레이] ${player.nickname}: ${newCombo.name} (${cardStrs})`);
 
     if (player.hand.length === 0) {
       room.players.forEach(p => {
@@ -251,7 +246,7 @@ io.on('connection', (socket) => {
     const activeCount = room.players.filter(p => !p.isOut && !p.isDisconnected).length;
     if (room.passCount >= activeCount - 1) {
       room.field = []; room.comboText = ""; room.passCount = 0; 
-      sendSystemLog(roomId, `[초기화] 모든 유저가 패스하여 필드가 초기화됩니다.`);
+      sendSystemLog(roomId, `[초기화] 모두 패스하여 필드가 초기화됩니다.`);
     }
     io.to(roomId).emit('updateRoom', room);
   });
@@ -260,7 +255,6 @@ io.on('connection', (socket) => {
     io.to(roomId).emit('chatMessage', { nickname, msg });
   });
 
-  // 연결 끊김 (재접속 대기 타이머)
   socket.on('disconnect', () => {
     for (const roomId in rooms) {
       const room = rooms[roomId];
@@ -270,7 +264,6 @@ io.on('connection', (socket) => {
         const player = room.players[playerIndex];
         
         if (!room.isPlaying) {
-          // 게임 시작 전이면 바로 삭제
           room.players.splice(playerIndex, 1);
           if (room.players.length === 0) delete rooms[roomId];
           else {
@@ -279,11 +272,9 @@ io.on('connection', (socket) => {
           }
           io.emit('roomList', getRoomList());
         } else {
-          // 게임 중이면 연결 끊김 상태로 전환 후 60초 대기
           player.isDisconnected = true;
           sendSystemLog(roomId, `[끊김] ${player.nickname}님의 연결이 끊겼습니다. (60초 대기)`);
           
-          // 내 턴이었다면 자동으로 턴 넘기기
           if (room.currentTurn === playerIndex) {
              room.passCount += 1;
              nextTurn(room);
@@ -292,12 +283,11 @@ io.on('connection', (socket) => {
           }
           io.to(roomId).emit('updateRoom', room);
 
-          // 60초 후 완전 강퇴
           player.disconnectTimer = setTimeout(() => {
             const idx = room.players.findIndex(p => p.id === player.id);
             if (idx !== -1 && room.players[idx].isDisconnected) {
-              room.players[idx].isOut = true; // 파산 처리로 게임 강제종료 방지
-              sendSystemLog(roomId, `[강퇴] ${player.nickname}님이 미복귀로 강퇴(파산) 처리되었습니다.`);
+              room.players[idx].isOut = true; 
+              sendSystemLog(roomId, `[강퇴] ${player.nickname}님이 미복귀로 파산 처리되었습니다.`);
               io.to(roomId).emit('updateRoom', room);
             }
           }, 60000);
