@@ -10,7 +10,7 @@ const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*", methods: ["GET", "POST"] } });
 
 const rooms = {};
-const SUITS = ['☁️', '⭐', '🌙', '☀️']; // 로직 처리를 위해 오름차순으로 배치 (구름이 1, 해가 4)
+const SUITS = ['☁️', '⭐', '🌙', '☀️']; 
 
 function getLexioRank(number) {
   if (number === 1) return 14;
@@ -26,14 +26,13 @@ function getSuitRank(suit) {
   return 0;
 }
 
-// 렉시오 특수 스트레이트 판별 및 랭킹 부여
 function getStraightInfo(cards) {
   const nums = cards.map(c => c.number).sort((a,b) => a-b);
   const str = nums.join(',');
   
-  if (str === '1,2,3,4,5') return { valid: true, rank: 999 }; // 1등 스트레이트
-  if (str === '2,3,4,5,6') return { valid: true, rank: 998 }; // 2등 스트레이트
-  if (str === '1,12,13,14,15') return { valid: true, rank: 997 }; // 3등 스트레이트 (12,13,14,15,1)
+  if (str === '1,2,3,4,5') return { valid: true, rank: 999 }; 
+  if (str === '2,3,4,5,6') return { valid: true, rank: 998 }; 
+  if (str === '1,12,13,14,15') return { valid: true, rank: 997 }; 
   
   let isConsecutive = true;
   for(let i=1; i<5; i++) {
@@ -133,7 +132,6 @@ function canPlay(lastCombo, newCombo) {
   return false;
 }
 
-// 다음 턴을 찾을 때 파산(isOut)한 유저를 건너뛰는 함수
 function nextTurn(room) {
   let next = (room.currentTurn + 1) % room.players.length;
   while (room.players[next].isOut) {
@@ -161,7 +159,6 @@ io.on('connection', (socket) => {
     if (!room || room.players.length >= room.maxPlayers) return;
 
     socket.join(roomId);
-    // 기본 코인 64, 파산 상태 isOut: false
     room.players.push({ id: socket.id, nickname, hand: [], coins: 64, isOut: false });
 
     if (room.players.length === room.maxPlayers && !room.isPlaying) {
@@ -182,10 +179,10 @@ io.on('connection', (socket) => {
       p.hand.sort((a, b) => getLexioRank(a.number) - getLexioRank(b.number) || getSuitRank(a.suit) - getSuitRank(b.suit));
     });
     
-    room.players.forEach(p => { if (p.isOut) p.hand = []; }); // 파산자는 카드 없음
+    room.players.forEach(p => { if (p.isOut) p.hand = []; }); 
     room.field = [];
     room.passCount = 0;
-    room.comboText = "새 게임 (선입니다!)";
+    room.comboText = ""; // ★ 수정: 새 게임 시작 시 배경 글자 숨김 처리
   }
 
   socket.on('playCards', ({ roomId, cards }) => {
@@ -206,19 +203,16 @@ io.on('connection', (socket) => {
     const player = room.players[playerIndex];
     player.hand = player.hand.filter(hc => !cards.find(c => c.id === hc.id));
 
-    // 누군가 손을 다 털었을 때 (라운드 승리)
     if (player.hand.length === 0) {
       room.players.forEach(p => {
         if (p.id !== player.id && !p.isOut) {
           let penalty = p.hand.length;
-          // 2를 들고 있는 개수만큼 벌금 2배 증가 (1장이면 2배, 2장이면 4배)
           const twoCount = p.hand.filter(c => c.number === 2).length;
           if (twoCount > 0) penalty = penalty * Math.pow(2, twoCount);
           
           p.coins -= penalty;
           player.coins += penalty;
           
-          // 파산 체크
           if (p.coins <= 0) {
             p.coins = 0;
             p.isOut = true;
@@ -227,7 +221,6 @@ io.on('connection', (socket) => {
       });
 
       const remainingActive = room.players.filter(p => !p.isOut);
-      // 나 혼자 살아남았다면 게임 완전 종료
       if (remainingActive.length <= 1) {
         room.comboText = `🎉 ${player.nickname} 최종 승리! (다른 유저 파산)`;
         room.isPlaying = false; 
@@ -236,12 +229,12 @@ io.on('connection', (socket) => {
         return;
       }
 
-      room.comboText = `🎉 ${player.nickname} 라운드 승리! (5초 뒤 새게임)`;
+      room.comboText = `🎉 ${player.nickname} 승리! (5초 뒤 시작)`;
       io.to(roomId).emit('updateRoom', room);
 
       setTimeout(() => {
         dealCards(room);
-        room.currentTurn = playerIndex; // 승자가 다음 판 선
+        room.currentTurn = playerIndex; 
         io.to(roomId).emit('updateRoom', room);
       }, 5000);
       return;
@@ -263,7 +256,7 @@ io.on('connection', (socket) => {
     const activeCount = room.players.filter(p => !p.isOut).length;
     if (room.passCount >= activeCount - 1) {
       room.field = []; 
-      room.comboText = "모두 패스! (선입니다)";
+      room.comboText = ""; // ★ 수정: 모두 패스하여 선을 잡았을 때 배경 글자 숨김 처리
       room.passCount = 0; 
     }
     io.to(roomId).emit('updateRoom', room);
