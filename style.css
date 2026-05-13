@@ -1,6 +1,13 @@
 @import url('https://fonts.googleapis.com/css2?family=Jua&display=swap');
 
-body { margin: 0; padding: 0; font-family: 'Jua', sans-serif; background-color: #222; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+/* 모바일 크롬 주소창 높이 변화에 대응하기 위해 dvh 사용 */
+body { 
+  margin: 0; padding: 0; font-family: 'Jua', sans-serif; background-color: #222; 
+  display: flex; justify-content: center; align-items: center; 
+  height: 100vh; /* Fallback */
+  height: 100dvh; 
+  overflow: hidden; 
+}
 
 #lobby { background: white; width: 90%; max-width: 400px; padding: 20px; border-radius: 15px; box-shadow: 0 10px 20px rgba(0,0,0,0.5); max-height: 90vh; overflow-y: auto; }
 #lobby h1 { text-align: center; color: #333; margin-top: 0; }
@@ -13,10 +20,13 @@ body { margin: 0; padding: 0; font-family: 'Jua', sans-serif; background-color: 
 #roomList { list-style: none; padding: 0; margin: 0; }
 .room-item { background: white; border: 1px solid #ccc; padding: 10px; margin-bottom: 5px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
 
+/* 게임보드를 화면 꽉 차게 100dvh로 세팅 */
 #game-board {
-  width: 100%; max-width: 450px; height: 95vh;
+  width: 100%; max-width: 450px; 
+  height: 100dvh; 
   background: linear-gradient( to bottom, #ffcccc 0%, #ffcccc 25%, #ccffcc 25%, #ccffcc 50%, #ffee99 50%, #ffee99 75%, #cce6ff 75%, #cce6ff 100% );
   border: 4px solid #111; border-radius: 10px; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden;
+  box-sizing: border-box;
 }
 
 .bg-emoji { position: absolute; left: 50%; transform: translateX(-50%); font-size: 100px; opacity: 0.15; z-index: 1; pointer-events: none; }
@@ -34,8 +44,8 @@ body { margin: 0; padding: 0; font-family: 'Jua', sans-serif; background-color: 
 .card.suit-⭐ { background-color: #fff9e6; border-color: #b38600; color: #b38600; }  
 .card.suit-☁️ { background-color: #e6f2ff; border-color: #0066cc; color: #0066cc; }  
 
-/* 상대방 UI (상단) */
-#opponents { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); display: flex; justify-content: center; gap: 10px; width: 90%; z-index: 5; }
+/* 1. 상대방 UI (상단) */
+#opponents { position: absolute; top: 15px; left: 50%; transform: translateX(-50%); display: flex; justify-content: center; gap: 10px; width: 90%; z-index: 5; }
 .opponent-area { text-align: center; background: rgba(255,255,255,0.85); padding: 5px 10px; border-radius: 10px; border: 2px solid #333; transition: 0.3s;}
 .opponent-area.disconnected { border-color: #ff6b6b; box-shadow: 0 0 10px red; opacity: 0.7;}
 .opponent-name { font-size: 12px; font-weight: bold; margin-bottom: 5px; color: #111; line-height: 1.3; }
@@ -43,36 +53,36 @@ body { margin: 0; padding: 0; font-family: 'Jua', sans-serif; background-color: 
 .card-back { width: 13px; height: 22px; background-color: #222; border: 1px solid #aaa; border-radius: 3px; margin-left: -8px; box-shadow: 1px 1px 2px rgba(0,0,0,0.5); }
 .card-back:first-child { margin-left: 0; }
 
-/* 시스템 로그 (상단 좌측) */
-#system-log-container { position: absolute; left: 10px; top: 10px; width: 120px; height: 60px; background: rgba(0,0,0,0.3); border-radius: 8px; overflow-y: auto; z-index: 10; padding: 5px; }
+/* 2. 시스템 로그 (상대방 영역과 안 겹치도록 90px까지 아래로 이동) */
+#system-log-container { position: absolute; left: 10px; top: 90px; width: 120px; height: 60px; background: rgba(0,0,0,0.3); border-radius: 8px; overflow-y: auto; z-index: 10; padding: 5px; }
 #system-logs { font-size: 10px; color: #e0e0e0; font-family: sans-serif; display: flex; flex-direction: column; gap: 3px; }
 
-/* 족보 가이드표 (상단 우측 신규 추가) */
-#hand-ranking-guide { position: absolute; right: 10px; top: 10px; background: rgba(0,0,0,0.55); color: #fff; padding: 5px 8px; border-radius: 5px; font-size: 10px; line-height: 1.4; font-family: sans-serif; z-index: 10; pointer-events: none; border: 1px solid rgba(255,255,255,0.3); }
+/* 3. 족보 가이드표 (상대방 영역과 안 겹치도록 90px까지 아래로 이동) */
+#hand-ranking-guide { position: absolute; right: 10px; top: 90px; background: rgba(0,0,0,0.55); color: #fff; padding: 5px 8px; border-radius: 5px; font-size: 10px; line-height: 1.4; font-family: sans-serif; z-index: 10; pointer-events: none; border: 1px solid rgba(255,255,255,0.3); }
 
-/* 채팅창 (좌측 중앙) */
-#chat-container { position: absolute; left: 10px; bottom: 130px; width: 140px; height: 100px; background: rgba(0,0,0,0.5); border-radius: 8px; display: flex; flex-direction: column; z-index: 10; padding: 5px; }
+/* 4. 채팅창 (요청대로 위로 4px 이동: 130 -> 134) */
+#chat-container { position: absolute; left: 10px; bottom: 134px; width: 140px; height: 100px; background: rgba(0,0,0,0.5); border-radius: 8px; display: flex; flex-direction: column; z-index: 10; padding: 5px; }
 #chat-messages { flex: 1; overflow-y: auto; color: white; font-size: 11px; margin-bottom: 5px; font-family: sans-serif; display: flex; flex-direction: column; gap: 2px; }
 .chat-input-area { display: flex; gap: 2px; }
 .chat-input-area input { flex: 1; border: none; padding: 3px; font-size: 11px; border-radius: 3px; }
 .chat-input-area button { padding: 2px 5px; font-size: 11px; font-family: 'Jua'; cursor: pointer; border: none; background: #fff; border-radius: 3px; }
 
-/* 조작 버튼 (우측 중앙) */
-.controls { position: absolute; right: 10px; bottom: 130px; display: flex; flex-direction: column; gap: 8px; z-index: 10; }
+/* 5. 조작 버튼 (요청대로 위로 5px 이동: 130 -> 135) */
+.controls { position: absolute; right: 10px; bottom: 135px; display: flex; flex-direction: column; gap: 8px; z-index: 10; }
 .controls button { padding: 12px 20px; font-family: 'Jua', sans-serif; font-size: 16px; border-radius: 8px; border: 2px solid #000; cursor: pointer; transition: 0.1s;}
 .controls button:active { transform: scale(0.9); }
 #playBtn { background-color: #ffcccc; box-shadow: 2px 2px 0 #cc0000; }
 #passBtn { background-color: #e6e6e6; box-shadow: 2px 2px 0 #4d4d4d; }
 
-/* 내 영역 (하단) */
+/* 6. 내 영역 (하단) */
 #my-area { position: absolute; bottom: 10px; left: 0; width: 100%; display: flex; flex-direction: column; align-items: center; z-index: 5; }
 .info-bar { display: flex; flex-direction: column; align-items: center; gap: 3px; margin-bottom: 5px; width: 100%; position: relative;}
 #combo-guide { font-size: 12px; color: #fff; background: rgba(0,0,0,0.6); padding: 2px 10px; border-radius: 10px; }
 #my-coins-display { background: rgba(0,0,0,0.8); color: #ffeb3b; padding: 4px 15px; border-radius: 15px; font-size: 13px; border: 1px solid #fff; }
 #my-turn-indicator { background: #ffeb3b; color: #000; border: 2px solid #000; padding: 3px 15px; border-radius: 15px; font-size: 13px; font-weight: bold; display: none; box-shadow: 2px 2px 0 #000; animation: pulse 1s infinite alternate; }
 
-/* 정렬 버튼 위치 하단 코인 근처 우측으로 조정 */
-#toggleSortBtn { position: absolute; right: 10px; top: 18px; padding: 4px 8px; font-family: 'Jua'; font-size: 11px; background: #fff; border: 2px solid #000; border-radius: 5px; cursor: pointer; box-shadow: 2px 2px 0 #000; z-index: 10; transition: 0.1s;}
+/* 7. 정렬 버튼 (카드가 올라와도 안 가려지도록 높이(-25px) 조절 및 z-index 100 부여) */
+#toggleSortBtn { position: absolute; right: 10px; top: -25px; padding: 4px 8px; font-family: 'Jua'; font-size: 11px; background: #fff; border: 2px solid #000; border-radius: 5px; cursor: pointer; box-shadow: 2px 2px 0 #000; z-index: 100; transition: 0.1s;}
 #toggleSortBtn:active { transform: scale(0.9); }
 
 #my-hand { display: flex; gap: 0; flex-wrap: wrap; justify-content: center; padding: 0 10px;}
