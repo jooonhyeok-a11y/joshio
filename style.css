@@ -6,10 +6,19 @@ body {
   height: 100dvh; overflow: hidden; 
 }
 
+/* 로비 디자인 원상복구 */
 #lobby { background: white; width: 90%; max-width: 400px; padding: 20px; border-radius: 15px; box-shadow: 0 10px 20px rgba(0,0,0,0.5); max-height: 90vh; overflow-y: auto; }
-#lobby h1 { text-align: center; color: #333; }
-.stats-section { background: #fff3cd; text-align: center; padding: 10px; border-radius: 10px; margin-bottom: 10px; }
+#lobby h1 { text-align: center; color: #333; margin-top: 0;}
+.lobby-section { margin-bottom: 15px; padding: 15px; background: #f5f5f5; border-radius: 10px; }
+.lobby-section h3 { margin-top: 0; border-bottom: 2px solid #ccc; padding-bottom: 5px;}
+.stats-section { background: #fff3cd; border: 1px solid #ffeeba; text-align: center; color: #856404; }
+#lobby input, #lobby select, #lobby button { width: 100%; box-sizing: border-box; margin: 5px 0; padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 5px; font-family: 'Jua', sans-serif; }
+#createRoomBtn { background-color: #ffcccc; border: 2px solid #ff6b6b; color: #333; cursor: pointer; font-weight: bold; transition: 0.2s; }
+#createRoomBtn:hover { transform: scale(1.02); }
+#roomList { list-style: none; padding: 0; margin: 0; }
+.room-item { background: white; border: 1px solid #ccc; padding: 10px; margin-bottom: 5px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
 
+/* 게임보드 */
 #game-board { 
   width: 100%; max-width: 450px; height: 100dvh; 
   background: linear-gradient( to bottom, #ffcccc 0%, #ffcccc 25%, #ccffcc 25%, #ccffcc 50%, #ffee99 50%, #ffee99 75%, #cce6ff 75%, #cce6ff 100% ); 
@@ -29,9 +38,11 @@ body {
 .card.suit-⭐ { background-color: #fff9e6; border-color: #b38600; color: #b38600; }  
 .card.suit-☁️ { background-color: #e6f2ff; border-color: #0066cc; color: #0066cc; }  
 
+/* 상대방 배치 및 세로배열 버그 수정 */
 #opponents { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; pointer-events: none; }
 .opponent-area { position: absolute; pointer-events: auto; text-align: center; background: rgba(255,255,255,0.8); padding: 4px 6px; border-radius: 8px; border: 1.5px solid #333; width: max-content; }
 .opponent-name { font-size: 10px; font-weight: bold; margin-bottom: 2px; }
+.opponent-hand { display: flex; flex-direction: row; justify-content: center; align-items: center; gap: 0; flex-wrap: nowrap;} /* 세로 버그 해결 */
 .card-back { width: 10px; height: 18px; background-color: #222; border: 1px solid #aaa; border-radius: 2px; margin-left: -6px; }
 .card-back:first-child { margin-left: 0; }
 
@@ -51,7 +62,7 @@ body {
 #round-indicator-text { background: #ffeb3b; color: #000; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: bold; box-shadow: 1px 1px 3px rgba(0,0,0,0.3); }
 #my-coins-display { background: rgba(0,0,0,0.8); color: #ffeb3b; padding: 2px 10px; border-radius: 10px; font-size: 12px; border: 1px solid #fff; font-weight: bold; }
 
-/* 신규 채팅창 (좌측 하단 접이식) */
+/* 채팅창 (좌측 하단 접이식) */
 #chat-container { position: absolute; left: 8px; bottom: 115px; width: 150px; background: rgba(0,0,0,0.6); border-radius: 6px; z-index: 100; padding: 4px; transition: 0.2s ease-in-out; }
 #chat-preview { font-size: 11px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; padding: 2px; }
 #chat-full { display: none; flex-direction: column; height: 110px; }
@@ -65,7 +76,8 @@ body {
 
 /* 조작 버튼 */
 .controls { position: absolute; left: 50%; top: 68%; transform: translate(-50%, -50%); display: flex; gap: 12px; z-index: 100; }
-.controls button { padding: 10px 18px; font-family: 'Jua'; font-size: 16px; border-radius: 8px; border: 2px solid #000; cursor: pointer; box-shadow: 2px 2px 0 #000; }
+.controls button { padding: 10px 18px; font-family: 'Jua'; font-size: 16px; border-radius: 8px; border: 2px solid #000; cursor: pointer; box-shadow: 2px 2px 0 #000; transition: 0.1s;}
+.controls button:active { transform: scale(0.9); }
 #playBtn { background-color: #ffcccc; }
 #passBtn { background-color: #e6e6e6; }
 
@@ -85,5 +97,10 @@ body {
 /* 정산 모달 */
 #round-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; background: rgba(0,0,0,0.9); z-index: 2000; display: flex; justify-content: center; align-items: center; }
 .modal-box { background: #222; border: 3px solid #ffeb3b; border-radius: 15px; padding: 20px; width: 85%; max-width: 300px; text-align: center; color: #fff; }
+#modal-title { margin-top: 0; color: #ffeb3b; font-size: 26px; text-shadow: 2px 2px 0 #000; margin-bottom: 5px;}
+#modal-my-tiles { font-size: 15px; margin: 10px 0; color: #ccc;}
 #modal-exchanges { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 10px 0; padding: 10px; background: #111; border-radius: 8px; }
 .exchange-item { font-size: 11px; padding: 4px 8px; background: #333; border-radius: 5px; }
+#modal-total-change { font-size: 18px; font-weight: bold; margin: 10px 0; }
+#modal-current-coins { font-size: 16px; margin: 10px 0; color: #ffeb3b; background: rgba(255,235,59,0.1); padding: 5px; border-radius: 8px;}
+#modal-confirm-btn { background: #ffeb3b; color: #000; border: 2px solid #000; padding: 12px 20px; border-radius: 8px; font-family: 'Jua'; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 10px; box-shadow: 2px 2px 0px #000;}
