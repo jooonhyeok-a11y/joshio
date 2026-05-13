@@ -109,6 +109,7 @@ function renderCard(cardData, isHand = false) {
   return div;
 }
 
+// ★ 프론트엔드 가이드 창에서도 엄격한 Number 형변환으로 족보 안내 버그 해결
 function updateComboGuide() {
   const g = document.getElementById('combo-guide');
   if (selectedCards.length === 0) { g.innerText = "선택한 카드: 없음"; return; }
@@ -122,7 +123,6 @@ function updateComboGuide() {
   g.style.color = text.includes("잘못") || text.includes("불가능") ? "#ff6b6b" : "#4ade80";
 }
 
-// ★ 라운드 종료 / 게임 종료 판별 로직 추가
 function showRoundSummary(room) {
   const modal = document.getElementById('round-modal');
   let myData = null;
@@ -137,13 +137,11 @@ function showRoundSummary(room) {
   const finalRankingsEl = document.getElementById('modal-final-rankings');
   const btn = document.getElementById('modal-confirm-btn');
 
-  // 1) 전체 게임이 끝났을 경우 (파산 또는 5라운드 완료)
   if (room.roundSummary.isGameOver) {
     titleEl.innerText = room.roundSummary.gameEndReason;
     winnerAnnounceEl.innerText = `🏆 ${room.roundSummary.overallWinnerName} 최종 우승!`;
     winnerAnnounceEl.style.display = 'block';
     
-    // 최종 순위표 그리기
     finalRankingsEl.innerHTML = '';
     room.roundSummary.finalRankings.forEach((r, idx) => {
         const div = document.createElement('div');
@@ -155,10 +153,8 @@ function showRoundSummary(room) {
     
     btn.innerText = "새 게임 시작하기"; 
     btn.onclick = () => { socket.emit('restartGame', { roomId: currentRoomId }); modal.style.display = 'none'; };
-    if(window.sumInt) clearInterval(window.sumInt); // 타이머 중지
-  } 
-  // 2) 일반 라운드가 끝났을 경우
-  else {
+    if(window.sumInt) clearInterval(window.sumInt);
+  } else {
     titleEl.innerText = "라운드 종료결산";
     winnerAnnounceEl.style.display = 'none';
     finalRankingsEl.style.display = 'none';
@@ -175,7 +171,6 @@ function showRoundSummary(room) {
     }, 1000);
   }
 
-  // 항상 보이는 상세 내역 (이번 라운드의 교환비)
   document.getElementById('modal-my-tiles').innerText = `내 남은 타일: ${myData.remainingTiles}개`;
   const exBox = document.getElementById('modal-exchanges'); exBox.innerHTML = '';
   for (const [opp, val] of Object.entries(myData.exchanges)) {
@@ -236,6 +231,7 @@ socket.on('updateRoom', (room) => {
     }
   });
 
+  // ★ 턴 UI - 내 턴입니다/아닙니다 정상 작동 
   const turnIndicator = document.getElementById('my-turn-indicator');
   const playBtn = document.getElementById('playBtn');
   const passBtn = document.getElementById('passBtn');
@@ -248,7 +244,8 @@ socket.on('updateRoom', (room) => {
       if (!lastTurnWasMe) playSound('turn');
       lastTurnWasMe = true;
     } else {
-      turnIndicator.style.display = 'none';
+      turnIndicator.style.display = 'block';
+      turnIndicator.innerText = "내 턴이 아닙니다";
       playBtn.disabled = true; passBtn.disabled = true;
       lastTurnWasMe = false;
     }
