@@ -1,5 +1,4 @@
-// ★ 본인의 Render 주소로 꼭 교체하세요!
-const socket = io('https://joshio.onrender.com'); 
+const socket = io('https://joshio.onrender.com');
 
 let currentRoomId = '';
 let selectedCards = [];
@@ -124,9 +123,10 @@ function updateComboGuide() {
 
 function showRoundSummary(room) {
   const modal = document.getElementById('round-modal');
-  
-  // ★ 내 데이터 찾기를 오직 불변하는 sessionId로만 수행
-  const myData = room.roundSummary.data[sessionId];
+  let myData = null;
+  for (const pid in room.roundSummary.data) {
+    if (room.roundSummary.data[pid].nickname === myNickname) { myData = room.roundSummary.data[pid]; break; }
+  }
   if (!myData) return;
 
   const titleEl = document.getElementById('modal-title');
@@ -192,21 +192,22 @@ socket.on('updateRoom', (room) => {
     if (currentSummaryStr !== s) { currentSummaryStr = s; showRoundSummary(room); }
   } else { document.getElementById('round-modal').style.display = 'none'; currentSummaryStr = null; }
 
+  // ★ 필드 업데이트 시 낸 사람 이름 반영
   const field = document.getElementById('center-field'); field.innerHTML = '';
   room.field.forEach(c => field.appendChild(renderCard(c, false)));
   document.getElementById('combo-text').innerText = room.comboText;
+  document.getElementById('last-played-name').innerText = (room.field.length > 0 && room.lastPlayedName) ? `🗣️ ${room.lastPlayedName}님이 낸 패` : '';
 
   const myHand = document.getElementById('my-hand'); myHand.innerHTML = '';
   const opps = document.getElementById('opponents'); opps.innerHTML = '';
   selectedCards = []; updateComboGuide();
 
-  // ★ 내 자리(Index)를 찾을 때도 무조건 sessionId 기준으로 탐색
   let myIdx = -1;
   room.players.forEach((p, i) => { if(p.sessionId === sessionId) myIdx = i; });
 
   room.players.forEach((p, i) => {
     if (i === myIdx) {
-      document.getElementById('my-coins-display').innerText = `🪙 ${p.coins}`; // 코인 완벽 업데이트
+      document.getElementById('my-coins-display').innerText = `🪙 ${p.coins}`;
       
       if (!p.isOut) {
         let handCopy = [...p.hand];
@@ -224,11 +225,27 @@ socket.on('updateRoom', (room) => {
       else if (total === 4) pos = (rel === 1 ? 'pos-left' : rel === 2 ? 'pos-top' : 'pos-right');
       else { pos = (rel === 1 ? 'pos-left' : rel === 2 ? 'pos-top-left' : rel === 3 ? 'pos-top-right' : 'pos-right'); }
       
-      const div = document.createElement('div'); div.className = `opponent-area ${pos}`;
-      div.innerHTML = `<div class="opponent-name">${p.isOut ? '💀' : p.isDisconnected ? '⏳' : ''}${p.nickname} (🪙${p.coins})</div>`;
-      const cards = document.createElement('div'); cards.className = 'opponent-hand';
-      if (!p.isOut) for(let k=0; k<p.hand.length; k++) cards.appendChild(document.createElement('div')).className = 'card-back';
-      div.appendChild(cards); opps.appendChild(div);
+      const isTurn = (room.currentTurn === i && room.isPlaying && !p.isOut);
+      
+      // ★ 턴 뱃지와 카드 숫자 뱃지 적용
+      const div = document.createElement('div'); 
+      div.className = `opponent-area ${pos}` + (isTurn ? ' is-turn' : '');
+      
+      let nameHTML = '';
+      if(isTurn) nameHTML += `<span class="turn-badge">현재 턴</span><br>`;
+      nameHTML += `<span class="opponent-name">${p.isOut ? '💀' : p.isDisconnected ? '⏳' : ''}${p.nickname} (🪙${p.coins})</span>`;
+      div.innerHTML = nameHTML;
+      
+      const cardsWrapper = document.createElement('div');
+      cardsWrapper.className = 'opponent-hand';
+      let cardsHTML = '';
+      if (!p.isOut) {
+          for(let k=0; k<p.hand.length; k++) cardsHTML += `<div class="card-back"></div>`;
+          cardsHTML += `<div class="card-count-badge">${p.hand.length}장</div>`;
+      }
+      cardsWrapper.innerHTML = cardsHTML;
+      div.appendChild(cardsWrapper); 
+      opps.appendChild(div);
     }
   });
 
