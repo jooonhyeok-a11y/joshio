@@ -182,7 +182,7 @@ io.on('connection', (socket) => {
     room.players.forEach(p => { if (p.isOut) p.hand = []; }); 
     room.field = [];
     room.passCount = 0;
-    room.comboText = ""; // ★ 수정: 새 게임 시작 시 배경 글자 숨김 처리
+    room.comboText = ""; 
   }
 
   socket.on('playCards', ({ roomId, cards }) => {
@@ -203,20 +203,43 @@ io.on('connection', (socket) => {
     const player = room.players[playerIndex];
     player.hand = player.hand.filter(hc => !cards.find(c => c.id === hc.id));
 
+    // ★ 게임 종료 및 상호 교환 코인 정산
     if (player.hand.length === 0) {
+      // 1. 각자의 '유효 남은 카드 수' 계산 (2가 있으면 2배씩 뻥튀기)
       room.players.forEach(p => {
-        if (p.id !== player.id && !p.isOut) {
-          let penalty = p.hand.length;
+        if (!p.isOut) {
           const twoCount = p.hand.filter(c => c.number === 2).length;
-          if (twoCount > 0) penalty = penalty * Math.pow(2, twoCount);
+          p.effCards = p.hand.length * Math.pow(2, twoCount);
+          p.roundChange = 0; // 이번 라운드 코인 변동량
+        }
+      });
+
+      // 2. 모든 플레이어 간 1:1 비교 (상호 교환)
+      const activePlayers = room.players.filter(p => !p.isOut);
+      for (let i = 0; i < activePlayers.length; i++) {
+        for (let j = i + 1; j < activePlayers.length; j++) {
+          let p1 = activePlayers[i];
+          let p2 = activePlayers[j];
+          let diff = p1.effCards - p2.effCards;
           
-          p.coins -= penalty;
-          player.coins += penalty;
-          
-          if (p.coins <= 0) {
-            p.coins = 0;
-            p.isOut = true;
+          if (diff > 0) {
+            // p1이 카드가 더 많음 -> p2에게 지불
+            p1.roundChange -= diff;
+            p2.roundChange += diff;
+          } else if (diff < 0) {
+            // p2가 카드가 더 많음 -> p1에게 지불
+            p1.roundChange += Math.abs(diff);
+            p2.roundChange -= Math.abs(diff);
           }
+        }
+      }
+
+      // 3. 실제 코인에 반영 및 파산(아웃) 체크
+      activePlayers.forEach(p => {
+        p.coins += p.roundChange;
+        if (p.coins <= 0) {
+          p.coins = 0;
+          p.isOut = true;
         }
       });
 
@@ -229,7 +252,7 @@ io.on('connection', (socket) => {
         return;
       }
 
-      room.comboText = `🎉 ${player.nickname} 승리! (5초 뒤 시작)`;
+      room.comboText = `🎉 ${player.nickname} 라운드 승리! (5초 뒤 시작)`;
       io.to(roomId).emit('updateRoom', room);
 
       setTimeout(() => {
@@ -256,7 +279,7 @@ io.on('connection', (socket) => {
     const activeCount = room.players.filter(p => !p.isOut).length;
     if (room.passCount >= activeCount - 1) {
       room.field = []; 
-      room.comboText = ""; // ★ 수정: 모두 패스하여 선을 잡았을 때 배경 글자 숨김 처리
+      room.comboText = ""; 
       room.passCount = 0; 
     }
     io.to(roomId).emit('updateRoom', room);
