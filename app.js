@@ -1,5 +1,5 @@
 // ★ Render 주소로 변경 필수!
-const socket = io('https://여기에-본인의-render-서비스-이름.onrender.com'); 
+const socket = io('https://joshio.onrender.com'); 
 
 let myId = '';
 let currentRoomId = '';
