@@ -50,11 +50,19 @@
     <!-- 1. 상단 중앙: 상대방 정보 -->
     <div id="opponents"></div>
     
-    <!-- 2. 상단 좌/우: 시스템 로그 및 정렬 버튼 -->
+    <!-- 2. 상단 좌/우: 시스템 로그 및 족보 가이드 (수정됨) -->
     <div id="system-log-container">
       <div id="system-logs"></div>
     </div>
-    <button id="toggleSortBtn">🔀 현재: 숫자순</button>
+    
+    <!-- 신규 추가된 우측 상단 족보 요약표 -->
+    <div id="hand-ranking-guide">
+      <div>1. 스트레이트</div>
+      <div>2. 플러시</div>
+      <div>3. 풀하우스</div>
+      <div>4. 포카드</div>
+      <div>5. 스티플</div>
+    </div>
 
     <!-- 3. 중앙 좌측: 채팅창 -->
     <div id="chat-container">
@@ -71,8 +79,11 @@
       <button id="passBtn">패스</button>
     </div>
     
-    <!-- 5. 하단 전체: 내 정보 및 카드 패 -->
+    <!-- 5. 하단 전체: 내 정보 및 카드 패 (정렬 버튼 이동됨) -->
     <div id="my-area">
+      <!-- 정렬 버튼이 내 정보 영역으로 이동 -->
+      <button id="toggleSortBtn">🔀 현재: 숫자순</button>
+      
       <div class="info-bar">
         <div id="combo-guide">선택한 카드: 없음</div>
         <div id="my-coins-display">🪙 내 코인: 64</div>
