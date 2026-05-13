@@ -27,22 +27,80 @@ function getLexioRank(num) {
 }
 function getSuitRank(suit) { if (suit === '☁️') return 1; if (suit === '⭐') return 2; if (suit === '🌙') return 3; if (suit === '☀️') return 4; return 0; }
 
+// ★ 다채로운 효과음 추가
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 function playSound(type) {
   if(audioCtx.state === 'suspended') audioCtx.resume();
-  const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+  const osc = audioCtx.createOscillator(); 
+  const gain = audioCtx.createGain();
   osc.connect(gain); gain.connect(audioCtx.destination);
-  if(type === 'turn') { 
-    osc.frequency.setValueAtTime(600, audioCtx.currentTime); 
-    gain.gain.setValueAtTime(0.1, audioCtx.currentTime); 
-    osc.start(); osc.stop(audioCtx.currentTime + 0.2); 
+  const now = audioCtx.currentTime;
+
+  if (type === 'select') {
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(600, now);
+    osc.frequency.exponentialRampToValueAtTime(1200, now + 0.05);
+    gain.gain.setValueAtTime(0.1, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+    osc.start(now); osc.stop(now + 0.05);
+  } else if (type === 'unselect') {
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(1200, now);
+    osc.frequency.exponentialRampToValueAtTime(600, now + 0.05);
+    gain.gain.setValueAtTime(0.1, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+    osc.start(now); osc.stop(now + 0.05);
+  } else if (type === 'play') {
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(300, now);
+    osc.frequency.exponentialRampToValueAtTime(100, now + 0.1);
+    gain.gain.setValueAtTime(0.1, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+    osc.start(now); osc.stop(now + 0.1);
+  } else if (type === 'pass') {
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(150, now);
+    osc.frequency.exponentialRampToValueAtTime(50, now + 0.15);
+    gain.gain.setValueAtTime(0.05, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+    osc.start(now); osc.stop(now + 0.15);
+  } else if (type === 'turn') {
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, now); // A5 맑은 소리
+    gain.gain.setValueAtTime(0.1, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+    osc.start(now); osc.stop(now + 0.3);
+  } else if (type === 'error') {
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(100, now);
+    osc.frequency.linearRampToValueAtTime(80, now + 0.2);
+    gain.gain.setValueAtTime(0.1, now);
+    gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
+    osc.start(now); osc.stop(now + 0.2);
+  } else if (type === 'win') {
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(440, now);
+    osc.frequency.setValueAtTime(554, now + 0.1);
+    osc.frequency.setValueAtTime(659, now + 0.2);
+    osc.frequency.setValueAtTime(880, now + 0.3);
+    gain.gain.setValueAtTime(0.1, now);
+    gain.gain.linearRampToValueAtTime(0, now + 0.5);
+    osc.start(now); osc.stop(now + 0.5);
+  } else if (type === 'chat') {
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(1000, now);
+    gain.gain.setValueAtTime(0.05, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+    osc.start(now); osc.stop(now + 0.1);
   }
 }
 
 const lobbyEl = document.getElementById('lobby');
 const gameBoardEl = document.getElementById('game-board');
 
-socket.on('playError', (msg) => alert(msg));
+// 에러 발생 시 에러 사운드 출력
+socket.on('playError', (msg) => { alert(msg); playSound('error'); });
+
 socket.on('systemLog', (msg) => {
   const logs = document.getElementById('system-logs');
   const div = document.createElement('div'); div.innerText = msg;
@@ -92,16 +150,31 @@ document.getElementById('toggleSortBtn').addEventListener('click', () => {
   myHandEl.innerHTML = ''; cards.forEach(card => myHandEl.appendChild(card));
 });
 
-function renderCard(cardData, isHand = false) {
+// ★ 카드 선택 상태를 동기화하기 위해 oldSelectedIds 배열을 매개변수로 받음
+function renderCard(cardData, isHand = false, oldSelectedIds = []) {
   const div = document.createElement('div');
   div.className = `card suit-${cardData.suit}` + (isHand ? ' in-hand' : '');
   div.innerHTML = `<div class="number">${cardData.number}</div><div class="suit">${cardData.suit}</div>`;
   div.dataset.card = JSON.stringify(cardData);
+  
   if (isHand) {
+    // 기존에 선택되어 있던 카드라면 다시 selected 클래스 부여 및 배열에 추가
+    if (oldSelectedIds.includes(cardData.id)) {
+        div.classList.add('selected');
+        selectedCards.push(cardData);
+    }
+
     div.addEventListener('click', () => {
-      div.classList.toggle('selected');
       const idx = selectedCards.findIndex(c => c.id === cardData.id);
-      if (idx > -1) selectedCards.splice(idx, 1); else selectedCards.push(cardData);
+      if (idx > -1) {
+        selectedCards.splice(idx, 1); 
+        div.classList.remove('selected');
+        playSound('unselect'); // 취소 사운드
+      } else { 
+        selectedCards.push(cardData);
+        div.classList.add('selected');
+        playSound('select'); // 선택 사운드
+      }
       updateComboGuide();
     });
   }
@@ -144,7 +217,7 @@ function showRoundSummary(room) {
     room.roundSummary.finalRankings.forEach((r, idx) => {
         const div = document.createElement('div');
         div.className = 'ranking-item' + (idx === 0 ? ' ranking-1st' : '');
-        div.innerHTML = `<span>${idx + 1}위: ${r.nickname}</span><span>🪙 ${r.coins}</span>`;
+        div.innerHTML = `<span>${idx + 1}위: ${r.nickname}</span><span>💰 ${r.coins}</span>`;
         finalRankingsEl.appendChild(div);
     });
     finalRankingsEl.style.display = 'block';
@@ -178,7 +251,7 @@ function showRoundSummary(room) {
     exBox.appendChild(item);
   }
   document.getElementById('modal-total-change').innerText = `나의 코인 변동: ${myData.roundChange > 0 ? '+' : ''}${myData.roundChange}개`;
-  document.getElementById('modal-current-coins').innerText = `🪙 내가 가진 코인: ${myData.totalCoins}개`;
+  document.getElementById('modal-current-coins').innerText = `💰 내가 가진 코인: ${myData.totalCoins}개`;
 
   modal.style.display = 'flex';
 }
@@ -192,22 +265,24 @@ socket.on('updateRoom', (room) => {
     if (currentSummaryStr !== s) { currentSummaryStr = s; showRoundSummary(room); }
   } else { document.getElementById('round-modal').style.display = 'none'; currentSummaryStr = null; }
 
-  // ★ 필드 업데이트 시 낸 사람 이름 반영
   const field = document.getElementById('center-field'); field.innerHTML = '';
   room.field.forEach(c => field.appendChild(renderCard(c, false)));
   document.getElementById('combo-text').innerText = room.comboText;
   document.getElementById('last-played-name').innerText = (room.field.length > 0 && room.lastPlayedName) ? `🗣️ ${room.lastPlayedName}님이 낸 패` : '';
 
+  // ★ 현재 화면에 선택되어 있던 카드들의 ID 목록을 보존
+  const oldSelectedIds = selectedCards.map(c => c.id);
+  selectedCards = []; // 배열은 비우지만 renderCard에서 다시 채워줌
+
   const myHand = document.getElementById('my-hand'); myHand.innerHTML = '';
   const opps = document.getElementById('opponents'); opps.innerHTML = '';
-  selectedCards = []; updateComboGuide();
 
   let myIdx = -1;
   room.players.forEach((p, i) => { if(p.sessionId === sessionId) myIdx = i; });
 
   room.players.forEach((p, i) => {
     if (i === myIdx) {
-      document.getElementById('my-coins-display').innerText = `🪙 ${p.coins}`;
+      document.getElementById('my-coins-display').innerText = `💰 ${p.coins}`;
       
       if (!p.isOut) {
         let handCopy = [...p.hand];
@@ -215,7 +290,8 @@ socket.on('updateRoom', (room) => {
           if (sortMode === 'number') return getLexioRank(a.number) - getLexioRank(b.number) || getSuitRank(a.suit) - getSuitRank(b.suit);
           return getSuitRank(a.suit) - getSuitRank(b.suit) || getLexioRank(a.number) - getLexioRank(b.number);
         });
-        handCopy.forEach(c => myHand.appendChild(renderCard(c, true)));
+        // oldSelectedIds를 넘겨서 렌더링 시 기존 선택 상태를 복구시킴
+        handCopy.forEach(c => myHand.appendChild(renderCard(c, true, oldSelectedIds)));
       }
     } else {
       let rel = (i - myIdx + room.players.length) % room.players.length;
@@ -227,13 +303,12 @@ socket.on('updateRoom', (room) => {
       
       const isTurn = (room.currentTurn === i && room.isPlaying && !p.isOut);
       
-      // ★ 턴 뱃지와 카드 숫자 뱃지 적용
       const div = document.createElement('div'); 
       div.className = `opponent-area ${pos}` + (isTurn ? ' is-turn' : '');
       
       let nameHTML = '';
       if(isTurn) nameHTML += `<span class="turn-badge">현재 턴</span><br>`;
-      nameHTML += `<span class="opponent-name">${p.isOut ? '💀' : p.isDisconnected ? '⏳' : ''}${p.nickname} (🪙${p.coins})</span>`;
+      nameHTML += `<span class="opponent-name">${p.isOut ? '💀' : p.isDisconnected ? '⏳' : ''}${p.nickname} (💰${p.coins})</span>`;
       div.innerHTML = nameHTML;
       
       const cardsWrapper = document.createElement('div');
@@ -248,6 +323,8 @@ socket.on('updateRoom', (room) => {
       opps.appendChild(div);
     }
   });
+
+  updateComboGuide(); // 최종적으로 선택 상태 가이드 텍스트 갱신
 
   const turnIndicator = document.getElementById('my-turn-indicator');
   const playBtn = document.getElementById('playBtn');
@@ -274,11 +351,26 @@ socket.on('updateRoom', (room) => {
   }
 });
 
+socket.on('gameWin', ({ winnerId, winnerName }) => {
+  playSound('win');
+  if (socket.id === winnerId || sessionId) { 
+    confetti({ particleCount: 150, spread: 100, origin: { y: 0.5 }, colors: ['#ffeb3b', '#4ade80', '#1890ff', '#ff6b6b'] });
+  }
+});
+
 document.getElementById('playBtn').addEventListener('click', () => {
-  if (selectedCards.length === 0) return alert('카드를 선택하세요.');
+  if (selectedCards.length === 0) {
+      playSound('error');
+      return alert('카드를 선택하세요.');
+  }
+  playSound('play');
   socket.emit('playCards', { roomId: currentRoomId, cards: selectedCards });
 });
-document.getElementById('passBtn').addEventListener('click', () => socket.emit('passTurn', { roomId: currentRoomId }));
+
+document.getElementById('passBtn').addEventListener('click', () => {
+  playSound('pass');
+  socket.emit('passTurn', { roomId: currentRoomId });
+});
 
 const chatPreview = document.getElementById('chat-preview');
 const chatContainer = document.getElementById('chat-container');
@@ -298,6 +390,7 @@ document.getElementById('sendChatBtn').addEventListener('click', () => {
 });
 
 socket.on('chatMessage', (d) => {
+  playSound('chat');
   const box = document.getElementById('chat-messages');
   const div = document.createElement('div'); div.innerHTML = `<b>${d.nickname}:</b> ${d.msg}`;
   box.appendChild(div); box.scrollTop = box.scrollHeight;
