@@ -6,6 +6,7 @@ let selectedCards = [];
 let myNickname = localStorage.getItem('lexio_nickname') || '';
 let sortMode = 'number'; 
 let currentSummaryStr = null; 
+let lastTurnWasMe = false; // 턴 알림음 중복 방지용
 
 let sessionId = localStorage.getItem('lexio_sessionId');
 if (!sessionId) {
@@ -27,7 +28,11 @@ function playSound(type) {
   if(audioCtx.state === 'suspended') audioCtx.resume();
   const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
   osc.connect(gain); gain.connect(audioCtx.destination);
-  if(type === 'turn') { osc.frequency.setValueAtTime(600, audioCtx.currentTime); gain.gain.setValueAtTime(0.1, audioCtx.currentTime); osc.start(); osc.stop(audioCtx.currentTime + 0.2); }
+  if(type === 'turn') { 
+    osc.frequency.setValueAtTime(600, audioCtx.currentTime); 
+    gain.gain.setValueAtTime(0.1, audioCtx.currentTime); 
+    osc.start(); osc.stop(audioCtx.currentTime + 0.2); 
+  }
 }
 
 const lobbyEl = document.getElementById('lobby');
@@ -42,10 +47,10 @@ socket.on('systemLog', (msg) => {
 
 socket.on('roomList', (rooms) => {
   const list = document.getElementById('roomList'); list.innerHTML = '';
-  if(rooms.length === 0) { list.innerHTML = '<li>방이 없습니다.</li>'; return; }
+  if(rooms.length === 0) { list.innerHTML = '<li class="room-item" style="justify-content:center; color:#888;">방이 없습니다.</li>'; return; }
   rooms.forEach(r => {
     const li = document.createElement('li'); li.className = 'room-item';
-    li.innerHTML = `<span>${r.name} (${r.currentPlayers}/${r.maxPlayers})</span><button onclick="joinRoom('${r.id}')">입장</button>`;
+    li.innerHTML = `<span><strong>${r.name}</strong> (${r.currentPlayers}/${r.maxPlayers}명)</span><button onclick="joinRoom('${r.id}')">입장</button>`;
     list.appendChild(li);
   });
 });
@@ -70,7 +75,6 @@ window.joinRoom = function(id) {
 
 function enterGameMode() { lobbyEl.style.display = 'none'; gameBoardEl.style.display = 'block'; if(audioCtx.state === 'suspended') audioCtx.resume(); }
 
-// 정렬 버튼: 텍스트 고정, 로직만 처리
 document.getElementById('toggleSortBtn').addEventListener('click', () => {
   sortMode = sortMode === 'number' ? 'suit' : 'number';
   
@@ -129,7 +133,7 @@ function showRoundSummary(room) {
     btn.innerText = "새 게임 시작하기"; btn.onclick = () => { socket.emit('restartGame', { roomId: currentRoomId }); modal.style.display = 'none'; };
   } else {
     let t = 10; btn.innerText = `확인 (${t}초)`; btn.onclick = () => modal.style.display = 'none';
-    if(window.sumInt) clearInterval(window.sumSumInt);
+    if(window.sumInt) clearInterval(window.sumInt);
     window.sumInt = setInterval(() => { t--; if(t > 0) btn.innerText = `확인 (${t}초)`; else { clearInterval(window.sumInt); modal.style.display = 'none'; }}, 1000);
   }
   modal.style.display = 'flex';
@@ -138,6 +142,7 @@ function showRoundSummary(room) {
 socket.on('updateRoom', (room) => {
   currentRoomId = room.id;
   document.getElementById('round-indicator-text').innerText = `${room.currentRound} / ${room.maxRound} ROUND`;
+  
   if (room.roundSummary) {
     const s = JSON.stringify(room.roundSummary);
     if (currentSummaryStr !== s) { currentSummaryStr = s; showRoundSummary(room); }
@@ -157,9 +162,6 @@ socket.on('updateRoom', (room) => {
   room.players.forEach((p, i) => {
     if (i === myIdx) {
       document.getElementById('my-coins-display').innerText = `🪙 ${p.coins}`;
-      if (room.currentTurn === myIdx && room.isPlaying && !p.isDisconnected) {
-        document.getElementById('my-turn-indicator').style.display = 'block'; playSound('turn');
-      } else { document.getElementById('my-turn-indicator').style.display = 'none'; }
       if (!p.isOut) {
         let handCopy = [...p.hand];
         handCopy.sort((a,b) => {
@@ -184,9 +186,34 @@ socket.on('updateRoom', (room) => {
     }
   });
 
-  const isMyTurn = (room.currentTurn === myIdx && room.isPlaying && myIdx !== -1);
-  document.getElementById('playBtn').disabled = !isMyTurn;
-  document.getElementById('passBtn').disabled = (!isMyTurn || room.field.length === 0);
+  // ★ 턴 UI 제어 완벽 복구
+  const turnIndicator = document.getElementById('my-turn-indicator');
+  const playBtn = document.getElementById('playBtn');
+  const passBtn = document.getElementById('passBtn');
+
+  if (room.isPlaying) {
+    if (myIdx !== -1 && room.currentTurn === myIdx && !room.players[myIdx].isOut) {
+      turnIndicator.style.display = 'block';
+      turnIndicator.innerText = room.field.length === 0 ? "👉 내 턴! (선입니다)" : "👉 내 턴입니다!";
+      playBtn.disabled = false;
+      passBtn.disabled = false;
+      
+      // 사운드는 내 턴이 처음 시작될 때 딱 한 번만 울리게 처리
+      if (!lastTurnWasMe) { playSound('turn'); }
+      lastTurnWasMe = true;
+    } else {
+      turnIndicator.style.display = 'none';
+      playBtn.disabled = true;
+      passBtn.disabled = true;
+      lastTurnWasMe = false;
+    }
+  } else {
+    turnIndicator.style.display = 'block';
+    turnIndicator.innerText = `대기/종료 (${room.players.length}/${room.maxPlayers}명)`;
+    playBtn.disabled = true;
+    passBtn.disabled = true;
+    lastTurnWasMe = false;
+  }
 });
 
 document.getElementById('playBtn').addEventListener('click', () => {
@@ -195,7 +222,7 @@ document.getElementById('playBtn').addEventListener('click', () => {
 });
 document.getElementById('passBtn').addEventListener('click', () => socket.emit('passTurn', { roomId: currentRoomId }));
 
-// ★ 채팅창 UI 열기/닫기 로직
+// 채팅창 UI 열기/닫기 로직
 const chatPreview = document.getElementById('chat-preview');
 const chatContainer = document.getElementById('chat-container');
 const closeChatBtn = document.getElementById('closeChatBtn');
@@ -214,11 +241,8 @@ document.getElementById('sendChatBtn').addEventListener('click', () => {
 });
 
 socket.on('chatMessage', (d) => {
-  // 전체 메세지창에 추가
   const box = document.getElementById('chat-messages');
   const div = document.createElement('div'); div.innerHTML = `<b>${d.nickname}:</b> ${d.msg}`;
   box.appendChild(div); box.scrollTop = box.scrollHeight;
-  
-  // 1줄 미리보기 업데이트
   chatPreview.innerHTML = `<span style="color:#ffeb3b;">${d.nickname}:</span> ${d.msg}`;
 });
