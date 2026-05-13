@@ -1,16 +1,27 @@
 // ★ Render 주소로 변경 필수!
 const socket = io('https://joshio.onrender.com'); 
 
-let myId = '';
 let currentRoomId = '';
 let selectedCards = [];
-let myNickname = '';
+let myNickname = localStorage.getItem('lexio_nickname') || '';
+let sortMode = 'number'; // 'number' 또는 'suit'
 
-// --- 1. 기록 시스템 (LocalStorage) ---
+// 1. 고유 세션 ID 생성 (재접속용)
+let sessionId = localStorage.getItem('lexio_sessionId');
+if (!sessionId) {
+  sessionId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  localStorage.setItem('lexio_sessionId', sessionId);
+}
+
+// 랭킹 판별용 로컬 함수 (정렬에 사용)
+function getLexioRank(number) { if (number === 1) return 14; if (number === 2) return 15; return number - 2; }
+function getSuitRank(suit) { if (suit === '☁️') return 1; if (suit === '⭐') return 2; if (suit === '🌙') return 3; if (suit === '☀️') return 4; return 0; }
+
 function loadStats() {
   const wins = localStorage.getItem('lexio_wins') || 0;
   const maxCoins = localStorage.getItem('lexio_max_coins') || 0;
   document.getElementById('stats-display').innerText = `누적 승리: ${wins}회 | 최고 코인: ${maxCoins}개`;
+  if(myNickname) document.getElementById('nicknameInput').value = myNickname;
 }
 function updateStats(isWin, currentCoins) {
   if (isWin) {
@@ -21,34 +32,28 @@ function updateStats(isWin, currentCoins) {
   if (currentCoins > maxCoins) localStorage.setItem('lexio_max_coins', currentCoins);
   loadStats();
 }
-loadStats(); // 초기 로드
+loadStats(); 
 
-// --- 2. 사운드 시스템 (Web Audio API) ---
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 function playSound(type) {
   if(audioCtx.state === 'suspended') audioCtx.resume();
   const osc = audioCtx.createOscillator();
   const gainNode = audioCtx.createGain();
-  osc.connect(gainNode);
-  gainNode.connect(audioCtx.destination);
-  
-  if(type === 'play') { // 타격음
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+  osc.connect(gainNode); gainNode.connect(audioCtx.destination);
+  if(type === 'play') {
+    osc.type = 'triangle'; osc.frequency.setValueAtTime(150, audioCtx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.1);
     gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
     gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
     osc.start(); osc.stop(audioCtx.currentTime + 0.1);
-  } else if(type === 'turn') { // 턴 알림음 (띠링)
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+  } else if(type === 'turn') {
+    osc.type = 'sine'; osc.frequency.setValueAtTime(600, audioCtx.currentTime);
     osc.frequency.setValueAtTime(800, audioCtx.currentTime + 0.1);
     gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
     gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
     osc.start(); osc.stop(audioCtx.currentTime + 0.3);
-  } else if(type === 'pass') { // 패스 (낮은 휙)
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+  } else if(type === 'pass') {
+    osc.type = 'sine'; osc.frequency.setValueAtTime(200, audioCtx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.15);
     gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
     gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
@@ -56,7 +61,6 @@ function playSound(type) {
   }
 }
 
-// --- 3. 로비 기능 ---
 const lobbyEl = document.getElementById('lobby');
 const gameBoardEl = document.getElementById('game-board');
 const roomListUl = document.getElementById('roomList');
@@ -64,6 +68,15 @@ const nicknameInput = document.getElementById('nicknameInput');
 const roomNameInput = document.getElementById('roomNameInput');
 
 socket.on('playError', (msg) => { alert(msg); });
+
+// 실시간 시스템 로그
+socket.on('systemLog', (msg) => {
+  const logsBox = document.getElementById('system-logs');
+  const div = document.createElement('div');
+  div.innerText = msg;
+  logsBox.appendChild(div);
+  logsBox.parentElement.scrollTop = logsBox.parentElement.scrollHeight;
+});
 
 socket.on('roomList', (rooms) => {
   roomListUl.innerHTML = '';
@@ -87,29 +100,49 @@ document.getElementById('createRoomBtn').addEventListener('click', () => {
   if (!myNickname) return alert("닉네임을 입력하세요!");
   if (!roomName) return alert("방 제목을 입력하세요!");
 
-  socket.emit('createRoom', { roomName, maxPlayers, nickname: myNickname });
+  localStorage.setItem('lexio_nickname', myNickname);
+  socket.emit('createRoom', { roomName, maxPlayers, nickname: myNickname, sessionId });
   enterGameMode();
 });
 
 window.joinRoom = function(roomId) {
   myNickname = nicknameInput.value.trim();
   if (!myNickname) return alert("닉네임을 먼저 입력하세요!");
-  socket.emit('joinRoom', { roomId, nickname: myNickname });
+  localStorage.setItem('lexio_nickname', myNickname);
+  socket.emit('joinRoom', { roomId, nickname: myNickname, sessionId });
   enterGameMode();
 }
 
 function enterGameMode() {
   lobbyEl.style.display = 'none';
   gameBoardEl.style.display = 'block';
-  // 모바일에서 오디오 권한 허용을 위한 꼼수 트리거
   if(audioCtx.state === 'suspended') audioCtx.resume();
 }
 
-// --- 4. 족보 가이드 시스템 ---
+// 정렬 토글 기능
+document.getElementById('toggleSortBtn').addEventListener('click', () => {
+  sortMode = sortMode === 'number' ? 'suit' : 'number';
+  document.getElementById('toggleSortBtn').innerText = `🔀 현재: ${sortMode === 'number' ? '숫자순' : '문양순'}`;
+  // 강제로 화면 리렌더링을 위해 서버에서 데이터를 다시 받았다고 가정하고 현재 상태 재적용 필요 
+  // (가장 쉬운 방법은 카드 재정렬 함수 호출, 아래 updateRoom에서 처리하므로 여기선 상태만 변경 후 UI만 갱신)
+  const myHandEl = document.getElementById('my-hand');
+  const cards = Array.from(myHandEl.children);
+  cards.sort((a, b) => {
+    const aData = JSON.parse(a.dataset.card);
+    const bData = JSON.parse(b.dataset.card);
+    if (sortMode === 'number') {
+      return getLexioRank(aData.number) - getLexioRank(bData.number) || getSuitRank(aData.suit) - getSuitRank(bData.suit);
+    } else {
+      return getSuitRank(aData.suit) - getSuitRank(bData.suit) || getLexioRank(aData.number) - getLexioRank(bData.number);
+    }
+  });
+  myHandEl.innerHTML = '';
+  cards.forEach(card => myHandEl.appendChild(card));
+});
+
 function updateComboGuide() {
   const guideEl = document.getElementById('combo-guide');
   if (selectedCards.length === 0) { guideEl.innerText = "선택한 카드: 없음"; guideEl.style.color = "#fff"; return; }
-  
   const len = selectedCards.length;
   let text = "알 수 없는 조합";
   if(len === 1) text = "싱글 (1장)";
@@ -126,6 +159,7 @@ function renderCard(cardData, isHand = false) {
   const div = document.createElement('div');
   div.className = `card suit-${cardData.suit}` + (isHand ? ' in-hand' : '');
   div.innerHTML = `<div class="number">${cardData.number}</div><div class="suit">${cardData.suit}</div>`;
+  div.dataset.card = JSON.stringify(cardData); // 정렬을 위해 데이터 심어두기
   
   if (isHand) {
     div.addEventListener('click', () => {
@@ -133,30 +167,28 @@ function renderCard(cardData, isHand = false) {
       const index = selectedCards.findIndex(c => c.id === cardData.id);
       if (index > -1) selectedCards.splice(index, 1);
       else selectedCards.push(cardData);
-      playSound('pass'); // 카드 클릭 시 가벼운 소리
-      updateComboGuide(); // 가이드 업데이트
+      playSound('pass'); 
+      updateComboGuide(); 
     });
   }
   return div;
 }
 
-// --- 5. 폭죽 애니메이션 이벤트 ---
 socket.on('gameWin', ({ winnerId, winnerName }) => {
-  if (socket.id === winnerId) {
-    // 내가 이겼을 때 화려하게!
+  if (socket.id === winnerId || sessionId) { // 승리 애니메이션
     confetti({ particleCount: 150, spread: 100, origin: { y: 0.5 }, colors: ['#ff0000', '#00ff00', '#0000ff', '#ffff00'] });
-    updateStats(true, 0); // 승리 횟수 저장 (코인은 updateRoom에서 저장)
+    updateStats(true, 0); 
   }
 });
 
-// --- 6. 룸 업데이트 (메인 로직) ---
 socket.on('updateRoom', (room) => {
   currentRoomId = room.id;
   
+  // 입장하자마자 게임화면 띄우기 (재접속용)
+  if(lobbyEl.style.display !== 'none') enterGameMode();
+
   document.getElementById('center-field').innerHTML = '';
-  room.field.forEach(card => {
-    document.getElementById('center-field').appendChild(renderCard(card, false));
-  });
+  room.field.forEach(card => { document.getElementById('center-field').appendChild(renderCard(card, false)); });
   document.getElementById('combo-text').innerText = room.comboText;
 
   const myHandEl = document.getElementById('my-hand');
@@ -169,10 +201,10 @@ socket.on('updateRoom', (room) => {
   let isMyTurn = false;
   
   room.players.forEach((player, index) => {
-    if (player.id === socket.id) {
+    if (player.sessionId === sessionId) {
       myIndex = index;
-      if (room.currentTurn === myIndex && room.isPlaying) {
-        if (!isMyTurn) playSound('turn'); // 방금 내 턴이 되었다면 알림음
+      if (room.currentTurn === myIndex && room.isPlaying && !player.isDisconnected) {
+        if (!isMyTurn) playSound('turn'); 
         isMyTurn = true;
       }
       
@@ -181,17 +213,25 @@ socket.on('updateRoom', (room) => {
         coinsDisplay.innerHTML = `💀 파산 (Out)`; coinsDisplay.style.color = "#ff6b6b"; coinsDisplay.style.borderColor = "#ff6b6b";
       } else {
         coinsDisplay.innerHTML = `🪙 내 코인: ${player.coins}`; coinsDisplay.style.color = "#ffeb3b"; coinsDisplay.style.borderColor = "#fff";
-        updateStats(false, player.coins); // 코인 최대 기록 갱신
-        player.hand.forEach(card => myHandEl.appendChild(renderCard(card, true)));
+        updateStats(false, player.coins); 
+        
+        // 내 손패 정렬 로직 적용
+        let myHandArr = [...player.hand];
+        myHandArr.sort((a, b) => {
+          if (sortMode === 'number') return getLexioRank(a.number) - getLexioRank(b.number) || getSuitRank(a.suit) - getSuitRank(b.suit);
+          else return getSuitRank(a.suit) - getSuitRank(b.suit) || getLexioRank(a.number) - getLexioRank(b.number);
+        });
+        myHandArr.forEach(card => myHandEl.appendChild(renderCard(card, true)));
       }
     } else {
       const opDiv = document.createElement('div');
-      opDiv.className = 'opponent-area';
+      opDiv.className = 'opponent-area' + (player.isDisconnected ? ' disconnected' : '');
       if (player.isOut) opDiv.style.opacity = '0.4';
       
       const nameDiv = document.createElement('div');
       nameDiv.className = 'opponent-name';
       if (player.isOut) nameDiv.innerHTML = `<span style="color:red;">💀파산</span><br>${player.nickname}`;
+      else if (player.isDisconnected) nameDiv.innerHTML = `<span style="color:orange;">⏳연결끊김</span><br>${player.nickname}`;
       else nameDiv.innerHTML = `🪙${player.coins}<br>${player.nickname} (${player.hand.length}장)`;
       opDiv.appendChild(nameDiv);
 
@@ -223,10 +263,9 @@ socket.on('updateRoom', (room) => {
   }
 });
 
-// 컨트롤 버튼
 document.getElementById('playBtn').addEventListener('click', () => {
   if (selectedCards.length === 0) return alert('카드를 선택해주세요!');
-  playSound('play'); // 쿵 소리
+  playSound('play'); 
   socket.emit('playCards', { roomId: currentRoomId, cards: selectedCards });
 });
 
@@ -235,10 +274,7 @@ document.getElementById('passBtn').addEventListener('click', () => {
   socket.emit('passTurn', { roomId: currentRoomId });
 });
 
-// --- 7. 채팅 시스템 ---
 const chatInput = document.getElementById('chatInput');
-const chatMessages = document.getElementById('chatMessages');
-
 document.getElementById('sendChatBtn').addEventListener('click', sendChat);
 chatInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') sendChat(); });
 
@@ -255,5 +291,5 @@ socket.on('chatMessage', ({ nickname, msg }) => {
   const div = document.createElement('div');
   div.innerHTML = `<strong style="color:#ffeb3b;">${nickname}:</strong> ${msg}`;
   msgBox.appendChild(div);
-  msgBox.scrollTop = msgBox.scrollHeight; // 스크롤 맨 아래로
+  msgBox.scrollTop = msgBox.scrollHeight; 
 });
