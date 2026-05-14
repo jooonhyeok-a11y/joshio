@@ -9,7 +9,7 @@ body { margin: 0; padding: 0; font-family: 'Jua', sans-serif; background-color: 
 .stats-section { background: #fff3cd; border: 1px solid #ffeeba; text-align: center; color: #856404; }
 #lobby input, #lobby select, #lobby button { width: 100%; box-sizing: border-box; margin: 5px 0; padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 5px; font-family: 'Jua', sans-serif; cursor: pointer;}
 #createRoomBtn { background-color: #ffcccc; border: 2px solid #ff6b6b; color: #333; cursor: pointer; font-weight: bold; transition: 0.2s; }
-#loginRejoinBtn { font-weight: bold; font-size: 18px; padding: 12px; transition: 0.2s; box-shadow: 2px 2px 0 #16a34a;}
+#loginRejoinBtn { font-weight: bold; font-size: 16px; padding: 12px; transition: 0.2s; box-shadow: 2px 2px 0 #16a34a;}
 #loginRejoinBtn:active { transform: scale(0.96); box-shadow: none;}
 
 #game-board { width: 100%; max-width: 450px; height: 100dvh; background: linear-gradient( to bottom, #ffcccc 0%, #ffcccc 25%, #ccffcc 25%, #ccffcc 50%, #ffee99 50%, #ffee99 75%, #cce6ff 75%, #cce6ff 100% ); position: relative; overflow: hidden; box-sizing: border-box; border: 2px solid #000; }
@@ -49,7 +49,6 @@ body { margin: 0; padding: 0; font-family: 'Jua', sans-serif; background-color: 
 #round-indicator-text { background: #ffeb3b; color: #000; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: bold; box-shadow: 1px 1px 3px rgba(0,0,0,0.3); }
 #my-coins-display { background: rgba(0,0,0,0.8); color: #ffeb3b; padding: 2px 10px; border-radius: 10px; font-size: 12px; border: 1px solid #fff; font-weight: bold; }
 
-/* ★ 채팅창 항상 열림 & 버튼 확대 완료 */
 #chat-container { position: absolute; left: 8px; top: 8px; width: 160px; height: 120px; background: rgba(0,0,0,0.6); border-radius: 6px; z-index: 150; padding: 6px; display: flex; flex-direction: column; }
 #chat-messages { flex: 1; overflow-y: auto; color: white; font-size: 10px; margin-bottom: 5px; display: flex; flex-direction: column; gap: 2px;}
 .chat-input-area { display: flex; gap: 4px; }
@@ -80,7 +79,6 @@ body { margin: 0; padding: 0; font-family: 'Jua', sans-serif; background-color: 
 #modal-winner-announce { color: #ffeb3b; margin-top: -5px; margin-bottom: 10px; font-size: 22px; text-shadow: 1px 1px 0 #000; }
 #modal-my-tiles { font-size: 14px; margin: 10px 0; color: #ddd; background: rgba(255,255,255,0.1); padding: 8px; border-radius: 8px;}
 
-/* ★ 코인 교환 도식화 UI */
 #modal-exchanges { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; padding: 10px; background: #111; border-radius: 8px; border: 1px solid #444; }
 .exchange-item { display: flex; align-items: center; justify-content: space-between; font-size: 13px; background: #2a2a2a; padding: 6px 12px; border-radius: 8px; border-left: 4px solid #4ade80;}
 .exchange-item.negative { border-left-color: #ff6b6b; }
