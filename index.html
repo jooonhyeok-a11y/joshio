@@ -10,12 +10,13 @@
 </head>
 <body>
 
+  <!-- 라운드 종료 정산 모달창 -->
   <div id="round-modal" style="display: none;">
     <div class="modal-box">
       <h2 id="modal-title">라운드 종료</h2>
       <h3 id="modal-winner-announce" style="display:none;"></h3>
       <div id="modal-round-details">
-        <div id="modal-my-tiles">내 남은 타일: 0개</div>
+        <div id="modal-my-tiles" style="margin-bottom:15px;">내 남은 타일: 0개</div>
         <div id="modal-exchanges"></div>
         <div id="modal-total-change">나의 코인 변동: +0개</div>
       </div>
@@ -28,12 +29,13 @@
   <div id="lobby">
     <h1>렉시오 온라인 ☀️</h1>
     <div class="lobby-section stats-section">
-      <h3>🏆 내 기록</h3>
+      <h3>🏆 내 기록 (자동 저장)</h3>
       <p id="stats-display">누적 승리: 0회 | 최고 자산: 0개</p>
     </div>
     <div class="lobby-section">
-      <h3>내 정보</h3>
+      <h3>계정 정보</h3>
       <input type="text" id="nicknameInput" placeholder="닉네임 입력 (필수)">
+      <input type="password" id="passwordInput" placeholder="비밀번호 (전적 및 재접속용)">
     </div>
     <div class="lobby-section">
       <h3>입장 가능한 방</h3>
@@ -61,7 +63,6 @@
     <div id="last-played-name"></div>
     <div id="center-field"></div>
     <div id="opponents"></div>
-    <div id="system-log-container"><div id="system-logs"></div></div>
 
     <div id="top-right-ui">
       <div id="hand-ranking-guide">
@@ -75,15 +76,12 @@
       <div id="my-coins-display">💰 64</div>
     </div>
 
+    <!-- 🌟 채팅창 고정 배치 (아코디언 삭제, 전송버튼 확대) -->
     <div id="chat-container">
-      <div id="chat-preview">💬 채팅창 열기...</div>
-      <div id="chat-full">
-        <div id="chat-messages"></div>
-        <div class="chat-input-area">
-          <input type="text" id="chatInput" placeholder="채팅...">
-          <button id="sendChatBtn">전송</button>
-        </div>
-        <button id="closeChatBtn">닫기 ⬇</button>
+      <div id="chat-messages"></div>
+      <div class="chat-input-area">
+        <input type="text" id="chatInput" placeholder="채팅...">
+        <button id="sendChatBtn">전송</button>
       </div>
     </div>
 
