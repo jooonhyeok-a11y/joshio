@@ -13,7 +13,7 @@ body { margin: 0; padding: 0; font-family: 'Jua', sans-serif; background-color: 
 #game-board { width: 100%; max-width: 450px; height: 100dvh; background: linear-gradient( to bottom, #ffcccc 0%, #ffcccc 25%, #ccffcc 25%, #ccffcc 50%, #ffee99 50%, #ffee99 75%, #cce6ff 75%, #cce6ff 100% ); position: relative; overflow: hidden; box-sizing: border-box; border: 2px solid #000; }
 
 .bg-emoji { position: absolute; left: 50%; transform: translateX(-50%); font-size: 100px; opacity: 0.12; z-index: 1; pointer-events: none; }
-#combo-text { position: absolute; top: 38%; left: 50%; transform: translate(-50%, -50%) rotate(-5deg); font-size: 32px; color: white; text-shadow: 2px 2px 0 #000; z-index: 10; white-space: nowrap; pointer-events: none; }
+#combo-text { position: absolute; top: 38%; left: 50%; transform: translate(-50%, -50%) rotate(-5deg); font-size: 32px; color: white; text-shadow: 2px 2px 0 #000; z-index: 30; white-space: nowrap; pointer-events: none; animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 #last-played-name { position: absolute; top: 32%; left: 50%; transform: translate(-50%, -50%); color: #ffeb3b; font-size: 14px; text-shadow: 1px 1px 2px #000; z-index: 10; font-weight: bold; }
 
 #center-field { position: absolute; top: 48%; left: 50%; transform: translate(-50%, -50%); display: flex; gap: 4px; z-index: 20; }
@@ -42,27 +42,22 @@ body { margin: 0; padding: 0; font-family: 'Jua', sans-serif; background-color: 
 .pos-top-left { top: 75px; left: 10px; }
 .pos-top-right { top: 75px; right: 10px; }
 
-#system-log-container { position: absolute; left: 8px; top: 8px; width: 100px; height: 60px; background: rgba(0,0,0,0.4); border-radius: 6px; overflow-y: auto; z-index: 100; padding: 4px; }
-#system-logs { font-size: 9px; color: #fff; line-height: 1.2; }
 #top-right-ui { position: absolute; right: 8px; top: 8px; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; z-index: 100; pointer-events: none;}
 #hand-ranking-guide { background: rgba(0,0,0,0.6); color: #fff; padding: 4px 6px; border-radius: 5px; font-size: 9px; line-height: 1.3; text-align: right; }
 #round-indicator-text { background: #ffeb3b; color: #000; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: bold; box-shadow: 1px 1px 3px rgba(0,0,0,0.3); }
 #my-coins-display { background: rgba(0,0,0,0.8); color: #ffeb3b; padding: 2px 10px; border-radius: 10px; font-size: 12px; border: 1px solid #fff; font-weight: bold; }
 
-#chat-container { position: absolute; left: 8px; bottom: 135px; width: 150px; background: rgba(0,0,0,0.6); border-radius: 6px; z-index: 100; padding: 4px; transition: 0.2s ease-in-out; }
-#chat-preview { font-size: 11px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; padding: 2px; }
-#chat-full { display: none; flex-direction: column; height: 110px; }
-#chat-container.expanded #chat-preview { display: none; }
-#chat-container.expanded #chat-full { display: flex; }
-#chat-messages { flex: 1; overflow-y: auto; color: white; font-size: 10px; margin-bottom: 4px; }
-.chat-input-area { display: flex; gap: 2px; margin-bottom: 2px; }
-.chat-input-area input { flex: 1; border: none; padding: 3px; font-size: 10px; border-radius: 3px; }
-.chat-input-area button { padding: 0 4px; font-size: 10px; border: none; background: #fff; border-radius: 3px; font-family: 'Jua'; cursor: pointer;}
-#closeChatBtn { background: #444; color: #fff; border: none; border-radius: 3px; padding: 2px 0; font-size: 10px; cursor: pointer; font-family: 'Jua'; }
+/* ★ 채팅창 고정 배치 및 전송 버튼 확대 */
+#chat-container { position: absolute; left: 8px; top: 8px; width: 160px; height: 120px; background: rgba(0,0,0,0.6); border-radius: 6px; z-index: 150; padding: 6px; display: flex; flex-direction: column; }
+#chat-messages { flex: 1; overflow-y: auto; color: white; font-size: 10px; margin-bottom: 5px; }
+.chat-input-area { display: flex; gap: 4px; }
+.chat-input-area input { flex: 1; border: none; padding: 4px; font-size: 10px; border-radius: 3px; }
+.chat-input-area button { padding: 5px 14px; font-size: 11px; border: none; background: #fff; border-radius: 3px; font-family: 'Jua'; cursor: pointer; font-weight: bold;}
 
 .controls { position: absolute; left: 50%; top: 62%; transform: translate(-50%, -50%); display: flex; gap: 12px; z-index: 100; }
 .controls button { padding: 10px 18px; font-family: 'Jua'; font-size: 16px; border-radius: 8px; border: 2px solid #000; cursor: pointer; box-shadow: 2px 2px 0 #000; transition: 0.1s;}
 .controls button:active { transform: scale(0.9); }
+.controls button:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 #playBtn { background-color: #ffcccc; }
 #passBtn { background-color: #e6e6e6; }
 
@@ -78,16 +73,24 @@ body { margin: 0; padding: 0; font-family: 'Jua', sans-serif; background-color: 
 .card.selected { transform: translateY(-40px) !important; border-color: #1890ff !important; box-shadow: 0 0 15px #1890ff; z-index: 60; }
 
 #round-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; background: rgba(0,0,0,0.9); z-index: 2000; display: flex; justify-content: center; align-items: center; }
-.modal-box { background: #222; border: 3px solid #ffeb3b; border-radius: 15px; padding: 20px; width: 85%; max-width: 300px; text-align: center; color: #fff; }
-#modal-title { margin-top: 0; color: #ffeb3b; font-size: 24px; text-shadow: 2px 2px 0 #000; margin-bottom: 5px;}
+.modal-box { background: #222; border: 3px solid #ffeb3b; border-radius: 15px; padding: 20px; width: 85%; max-width: 320px; text-align: center; color: #fff; }
+#modal-title { margin-top: 0; color: #ffeb3b; font-size: 26px; text-shadow: 2px 2px 0 #000; margin-bottom: 10px;}
 #modal-winner-announce { color: #ffeb3b; margin-top: -5px; margin-bottom: 10px; font-size: 22px; text-shadow: 1px 1px 0 #000; }
-#modal-my-tiles { font-size: 15px; margin: 10px 0; color: #ccc;}
-#modal-exchanges { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 10px 0; padding: 10px; background: #111; border-radius: 8px; }
-.exchange-item { font-size: 11px; padding: 4px 8px; background: #333; border-radius: 5px; }
-#modal-total-change { font-size: 18px; font-weight: bold; margin: 10px 0; }
+#modal-my-tiles { font-size: 14px; margin: 10px 0; color: #ddd; background: rgba(255,255,255,0.1); padding: 8px; border-radius: 8px;}
+
+/* ★ 코인 교환 도식화 UI */
+#modal-exchanges { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; padding: 10px; background: #111; border-radius: 8px; border: 1px solid #444; }
+.exchange-item { display: flex; align-items: center; justify-content: space-between; font-size: 13px; background: #2a2a2a; padding: 6px 12px; border-radius: 8px; border-left: 4px solid #4ade80;}
+.exchange-item.negative { border-left-color: #ff6b6b; }
+.ex-amount { font-weight: bold; font-size: 15px; }
+
+#modal-total-change { font-size: 18px; font-weight: bold; margin: 15px 0 10px 0; }
 #modal-final-rankings { margin: 15px 0; background: #111; padding: 10px; border-radius: 8px; border: 1px solid #444; }
 .ranking-item { display: flex; justify-content: space-between; padding: 6px 10px; border-bottom: 1px solid #333; font-size: 14px; color: #ccc;}
 .ranking-item:last-child { border-bottom: none; }
 .ranking-1st { color: #4ade80; font-weight: bold; font-size: 16px; }
 #modal-current-coins { font-size: 16px; margin: 10px 0; color: #ffeb3b; background: rgba(255,235,59,0.1); padding: 5px; border-radius: 8px;}
 #modal-confirm-btn { background: #ffeb3b; color: #000; border: 2px solid #000; padding: 12px 20px; border-radius: 8px; font-family: 'Jua'; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 10px; box-shadow: 2px 2px 0px #000;}
+#modal-confirm-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+@keyframes popIn { 0% { transform: translate(-50%, -50%) scale(0.2) rotate(-20deg); opacity: 0; } 70% { transform: translate(-50%, -50%) scale(1.1) rotate(5deg); } 100% { transform: translate(-50%, -50%) scale(1) rotate(-5deg); opacity: 1; } }
