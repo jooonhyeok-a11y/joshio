@@ -27,80 +27,26 @@ function getLexioRank(num) {
 }
 function getSuitRank(suit) { if (suit === '☁️') return 1; if (suit === '⭐') return 2; if (suit === '🌙') return 3; if (suit === '☀️') return 4; return 0; }
 
-// ★ 다채로운 효과음 추가
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 function playSound(type) {
   if(audioCtx.state === 'suspended') audioCtx.resume();
-  const osc = audioCtx.createOscillator(); 
-  const gain = audioCtx.createGain();
+  const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
   osc.connect(gain); gain.connect(audioCtx.destination);
   const now = audioCtx.currentTime;
-
-  if (type === 'select') {
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(600, now);
-    osc.frequency.exponentialRampToValueAtTime(1200, now + 0.05);
-    gain.gain.setValueAtTime(0.1, now);
-    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
-    osc.start(now); osc.stop(now + 0.05);
-  } else if (type === 'unselect') {
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(1200, now);
-    osc.frequency.exponentialRampToValueAtTime(600, now + 0.05);
-    gain.gain.setValueAtTime(0.1, now);
-    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
-    osc.start(now); osc.stop(now + 0.05);
-  } else if (type === 'play') {
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(300, now);
-    osc.frequency.exponentialRampToValueAtTime(100, now + 0.1);
-    gain.gain.setValueAtTime(0.1, now);
-    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-    osc.start(now); osc.stop(now + 0.1);
-  } else if (type === 'pass') {
-    osc.type = 'square';
-    osc.frequency.setValueAtTime(150, now);
-    osc.frequency.exponentialRampToValueAtTime(50, now + 0.15);
-    gain.gain.setValueAtTime(0.05, now);
-    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
-    osc.start(now); osc.stop(now + 0.15);
-  } else if (type === 'turn') {
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(880, now); // A5 맑은 소리
-    gain.gain.setValueAtTime(0.1, now);
-    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
-    osc.start(now); osc.stop(now + 0.3);
-  } else if (type === 'error') {
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(100, now);
-    osc.frequency.linearRampToValueAtTime(80, now + 0.2);
-    gain.gain.setValueAtTime(0.1, now);
-    gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
-    osc.start(now); osc.stop(now + 0.2);
-  } else if (type === 'win') {
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(440, now);
-    osc.frequency.setValueAtTime(554, now + 0.1);
-    osc.frequency.setValueAtTime(659, now + 0.2);
-    osc.frequency.setValueAtTime(880, now + 0.3);
-    gain.gain.setValueAtTime(0.1, now);
-    gain.gain.linearRampToValueAtTime(0, now + 0.5);
-    osc.start(now); osc.stop(now + 0.5);
-  } else if (type === 'chat') {
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(1000, now);
-    gain.gain.setValueAtTime(0.05, now);
-    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-    osc.start(now); osc.stop(now + 0.1);
-  }
+  if (type === 'select') { osc.type = 'sine'; osc.frequency.setValueAtTime(600, now); osc.frequency.exponentialRampToValueAtTime(1200, now + 0.05); gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05); osc.start(now); osc.stop(now + 0.05); }
+  else if (type === 'unselect') { osc.type = 'sine'; osc.frequency.setValueAtTime(1200, now); osc.frequency.exponentialRampToValueAtTime(600, now + 0.05); gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05); osc.start(now); osc.stop(now + 0.05); }
+  else if (type === 'play') { osc.type = 'triangle'; osc.frequency.setValueAtTime(300, now); osc.frequency.exponentialRampToValueAtTime(100, now + 0.1); gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1); osc.start(now); osc.stop(now + 0.1); }
+  else if (type === 'pass') { osc.type = 'square'; osc.frequency.setValueAtTime(150, now); osc.frequency.exponentialRampToValueAtTime(50, now + 0.15); gain.gain.setValueAtTime(0.05, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15); osc.start(now); osc.stop(now + 0.15); }
+  else if (type === 'turn') { osc.type = 'sine'; osc.frequency.setValueAtTime(880, now); gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3); osc.start(now); osc.stop(now + 0.3); }
+  else if (type === 'error') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, now); gain.gain.setValueAtTime(0.1, now); osc.start(now); osc.stop(now + 0.2); }
+  else if (type === 'win') { osc.type = 'triangle'; osc.frequency.setValueAtTime(440, now); osc.frequency.setValueAtTime(880, now + 0.3); gain.gain.setValueAtTime(0.1, now); osc.start(now); osc.stop(now + 0.5); }
+  else if (type === 'chat') { osc.type = 'sine'; osc.frequency.setValueAtTime(1000, now); gain.gain.setValueAtTime(0.05, now); osc.start(now); osc.stop(now + 0.1); }
 }
 
 const lobbyEl = document.getElementById('lobby');
 const gameBoardEl = document.getElementById('game-board');
 
-// 에러 발생 시 에러 사운드 출력
 socket.on('playError', (msg) => { alert(msg); playSound('error'); });
-
 socket.on('systemLog', (msg) => {
   const logs = document.getElementById('system-logs');
   const div = document.createElement('div'); div.innerText = msg;
@@ -150,18 +96,17 @@ document.getElementById('toggleSortBtn').addEventListener('click', () => {
   myHandEl.innerHTML = ''; cards.forEach(card => myHandEl.appendChild(card));
 });
 
-// ★ 카드 선택 상태를 동기화하기 위해 oldSelectedIds 배열을 매개변수로 받음
 function renderCard(cardData, isHand = false, oldSelectedIds = []) {
   const div = document.createElement('div');
   div.className = `card suit-${cardData.suit}` + (isHand ? ' in-hand' : '');
   div.innerHTML = `<div class="number">${cardData.number}</div><div class="suit">${cardData.suit}</div>`;
+  div.dataset.id = cardData.id;
   div.dataset.card = JSON.stringify(cardData);
   
   if (isHand) {
-    // 기존에 선택되어 있던 카드라면 다시 selected 클래스 부여 및 배열에 추가
     if (oldSelectedIds.includes(cardData.id)) {
         div.classList.add('selected');
-        selectedCards.push(cardData);
+        if (!selectedCards.find(c => c.id === cardData.id)) selectedCards.push(cardData);
     }
 
     div.addEventListener('click', () => {
@@ -169,11 +114,11 @@ function renderCard(cardData, isHand = false, oldSelectedIds = []) {
       if (idx > -1) {
         selectedCards.splice(idx, 1); 
         div.classList.remove('selected');
-        playSound('unselect'); // 취소 사운드
+        playSound('unselect');
       } else { 
         selectedCards.push(cardData);
         div.classList.add('selected');
-        playSound('select'); // 선택 사운드
+        playSound('select');
       }
       updateComboGuide();
     });
@@ -196,10 +141,7 @@ function updateComboGuide() {
 
 function showRoundSummary(room) {
   const modal = document.getElementById('round-modal');
-  let myData = null;
-  for (const pid in room.roundSummary.data) {
-    if (room.roundSummary.data[pid].nickname === myNickname) { myData = room.roundSummary.data[pid]; break; }
-  }
+  const myData = room.roundSummary.data[sessionId];
   if (!myData) return;
 
   const titleEl = document.getElementById('modal-title');
@@ -212,36 +154,27 @@ function showRoundSummary(room) {
     titleEl.innerText = room.roundSummary.gameEndReason;
     winnerAnnounceEl.innerText = `🏆 ${room.roundSummary.overallWinnerName} 최종 우승!`;
     winnerAnnounceEl.style.display = 'block';
-    
     finalRankingsEl.innerHTML = '';
     room.roundSummary.finalRankings.forEach((r, idx) => {
         const div = document.createElement('div');
         div.className = 'ranking-item' + (idx === 0 ? ' ranking-1st' : '');
-        div.innerHTML = `<span>${idx + 1}위: ${r.nickname}</span><span>💰 ${r.coins}</span>`;
+        div.innerHTML = `<span>${idx + 1}위: ${r.avatar} ${r.nickname}</span><span>💰 ${r.coins}</span>`;
         finalRankingsEl.appendChild(div);
     });
     finalRankingsEl.style.display = 'block';
-    
+    roundDetailsEl.style.display = 'none';
     btn.innerText = "새 게임 시작하기"; 
     btn.onclick = () => { socket.emit('restartGame', { roomId: currentRoomId }); modal.style.display = 'none'; };
-    if(window.sumInt) clearInterval(window.sumInt);
   } else {
     titleEl.innerText = "라운드 종료결산";
     winnerAnnounceEl.style.display = 'none';
     finalRankingsEl.style.display = 'none';
     roundDetailsEl.style.display = 'block';
-    
-    let t = 10; 
-    btn.innerText = `확인 (다음 라운드로 ${t}초)`; 
+    let t = 10; btn.innerText = `확인 (다음 라운드로 ${t}초)`; 
     btn.onclick = () => modal.style.display = 'none';
     if(window.sumInt) clearInterval(window.sumInt);
-    window.sumInt = setInterval(() => { 
-      t--; 
-      if(t > 0) btn.innerText = `확인 (다음 라운드로 ${t}초)`; 
-      else { clearInterval(window.sumInt); modal.style.display = 'none'; }
-    }, 1000);
+    window.sumInt = setInterval(() => { t--; if(t > 0) btn.innerText = `확인 (다음 라운드로 ${t}초)`; else { clearInterval(window.sumInt); modal.style.display = 'none'; }}, 1000);
   }
-
   document.getElementById('modal-my-tiles').innerText = `내 남은 타일: ${myData.remainingTiles}개`;
   const exBox = document.getElementById('modal-exchanges'); exBox.innerHTML = '';
   for (const [opp, val] of Object.entries(myData.exchanges)) {
@@ -252,14 +185,12 @@ function showRoundSummary(room) {
   }
   document.getElementById('modal-total-change').innerText = `나의 코인 변동: ${myData.roundChange > 0 ? '+' : ''}${myData.roundChange}개`;
   document.getElementById('modal-current-coins').innerText = `💰 내가 가진 코인: ${myData.totalCoins}개`;
-
   modal.style.display = 'flex';
 }
 
 socket.on('updateRoom', (room) => {
   currentRoomId = room.id;
   document.getElementById('round-indicator-text').innerText = `${room.currentRound} / ${room.maxRound} ROUND`;
-  
   if (room.roundSummary) {
     const s = JSON.stringify(room.roundSummary);
     if (currentSummaryStr !== s) { currentSummaryStr = s; showRoundSummary(room); }
@@ -270,9 +201,8 @@ socket.on('updateRoom', (room) => {
   document.getElementById('combo-text').innerText = room.comboText;
   document.getElementById('last-played-name').innerText = (room.field.length > 0 && room.lastPlayedName) ? `🗣️ ${room.lastPlayedName}님이 낸 패` : '';
 
-  // ★ 현재 화면에 선택되어 있던 카드들의 ID 목록을 보존
   const oldSelectedIds = selectedCards.map(c => c.id);
-  selectedCards = []; // 배열은 비우지만 renderCard에서 다시 채워줌
+  selectedCards = [];
 
   const myHand = document.getElementById('my-hand'); myHand.innerHTML = '';
   const opps = document.getElementById('opponents'); opps.innerHTML = '';
@@ -283,14 +213,12 @@ socket.on('updateRoom', (room) => {
   room.players.forEach((p, i) => {
     if (i === myIdx) {
       document.getElementById('my-coins-display').innerText = `💰 ${p.coins}`;
-      
       if (!p.isOut) {
         let handCopy = [...p.hand];
         handCopy.sort((a,b) => {
           if (sortMode === 'number') return getLexioRank(a.number) - getLexioRank(b.number) || getSuitRank(a.suit) - getSuitRank(b.suit);
           return getSuitRank(a.suit) - getSuitRank(b.suit) || getLexioRank(a.number) - getLexioRank(b.number);
         });
-        // oldSelectedIds를 넘겨서 렌더링 시 기존 선택 상태를 복구시킴
         handCopy.forEach(c => myHand.appendChild(renderCard(c, true, oldSelectedIds)));
       }
     } else {
@@ -300,95 +228,62 @@ socket.on('updateRoom', (room) => {
       else if (total === 3) pos = (rel === 1 ? 'pos-left' : 'pos-right');
       else if (total === 4) pos = (rel === 1 ? 'pos-left' : rel === 2 ? 'pos-top' : 'pos-right');
       else { pos = (rel === 1 ? 'pos-left' : rel === 2 ? 'pos-top-left' : rel === 3 ? 'pos-top-right' : 'pos-right'); }
-      
       const isTurn = (room.currentTurn === i && room.isPlaying && !p.isOut);
+      const div = document.createElement('div'); div.className = `opponent-area ${pos}` + (isTurn ? ' is-turn' : '');
       
-      const div = document.createElement('div'); 
-      div.className = `opponent-area ${pos}` + (isTurn ? ' is-turn' : '');
+      // ★ 랜덤 아바타 반영
+      div.innerHTML = (isTurn ? '<span class="turn-badge">현재 턴</span><br>' : '') + `<span class="opponent-name">${p.isOut ? '💀' : p.isDisconnected ? '⏳' : p.avatar} ${p.nickname} (💰${p.coins})</span>`;
       
-      let nameHTML = '';
-      if(isTurn) nameHTML += `<span class="turn-badge">현재 턴</span><br>`;
-      nameHTML += `<span class="opponent-name">${p.isOut ? '💀' : p.isDisconnected ? '⏳' : ''}${p.nickname} (💰${p.coins})</span>`;
-      div.innerHTML = nameHTML;
-      
-      const cardsWrapper = document.createElement('div');
-      cardsWrapper.className = 'opponent-hand';
-      let cardsHTML = '';
+      const cardsWrapper = document.createElement('div'); cardsWrapper.className = 'opponent-hand';
       if (!p.isOut) {
-          for(let k=0; k<p.hand.length; k++) cardsHTML += `<div class="card-back"></div>`;
-          cardsHTML += `<div class="card-count-badge">${p.hand.length}장</div>`;
+          for(let k=0; k<p.hand.length; k++) cardsWrapper.innerHTML += '<div class="card-back"></div>';
+          cardsWrapper.innerHTML += `<div class="card-count-badge">${p.hand.length}장</div>`;
       }
-      cardsWrapper.innerHTML = cardsHTML;
-      div.appendChild(cardsWrapper); 
-      opps.appendChild(div);
+      div.appendChild(cardsWrapper); opps.appendChild(div);
     }
   });
 
-  updateComboGuide(); // 최종적으로 선택 상태 가이드 텍스트 갱신
+  updateComboGuide();
 
   const turnIndicator = document.getElementById('my-turn-indicator');
   const playBtn = document.getElementById('playBtn');
   const passBtn = document.getElementById('passBtn');
-
   if (room.isPlaying) {
     if (myIdx !== -1 && room.currentTurn === myIdx && !room.players[myIdx].isOut) {
       turnIndicator.style.display = 'block';
       turnIndicator.innerText = room.field.length === 0 ? "👉 내 턴! (선입니다)" : "👉 내 턴입니다!";
       playBtn.disabled = false; passBtn.disabled = false;
-      if (!lastTurnWasMe) playSound('turn');
-      lastTurnWasMe = true;
+      if (!lastTurnWasMe) playSound('turn'); lastTurnWasMe = true;
     } else {
-      turnIndicator.style.display = 'block';
-      turnIndicator.innerText = "내 턴이 아닙니다";
-      playBtn.disabled = true; passBtn.disabled = true;
-      lastTurnWasMe = false;
+      turnIndicator.style.display = 'block'; turnIndicator.innerText = "내 턴이 아닙니다";
+      playBtn.disabled = true; passBtn.disabled = true; lastTurnWasMe = false;
     }
   } else {
-    turnIndicator.style.display = 'block';
-    turnIndicator.innerText = `대기/종료 (${room.players.length}/${room.maxPlayers}명)`;
-    playBtn.disabled = true; passBtn.disabled = true;
-    lastTurnWasMe = false;
+    turnIndicator.style.display = 'block'; turnIndicator.innerText = `대기/종료 (${room.players.length}/${room.maxPlayers}명)`;
+    playBtn.disabled = true; passBtn.disabled = true; lastTurnWasMe = false;
   }
 });
 
 socket.on('gameWin', ({ winnerId, winnerName }) => {
   playSound('win');
-  if (socket.id === winnerId || sessionId) { 
-    confetti({ particleCount: 150, spread: 100, origin: { y: 0.5 }, colors: ['#ffeb3b', '#4ade80', '#1890ff', '#ff6b6b'] });
-  }
+  if (socket.id === winnerId || sessionId) confetti({ particleCount: 150, spread: 100, origin: { y: 0.5 }, colors: ['#ffeb3b', '#4ade80', '#1890ff', '#ff6b6b'] });
 });
 
 document.getElementById('playBtn').addEventListener('click', () => {
-  if (selectedCards.length === 0) {
-      playSound('error');
-      return alert('카드를 선택하세요.');
-  }
-  playSound('play');
-  socket.emit('playCards', { roomId: currentRoomId, cards: selectedCards });
+  if (selectedCards.length === 0) { playSound('error'); return alert('카드를 선택하세요.'); }
+  playSound('play'); socket.emit('playCards', { roomId: currentRoomId, cards: selectedCards });
 });
-
-document.getElementById('passBtn').addEventListener('click', () => {
-  playSound('pass');
-  socket.emit('passTurn', { roomId: currentRoomId });
-});
+document.getElementById('passBtn').addEventListener('click', () => { playSound('pass'); socket.emit('passTurn', { roomId: currentRoomId }); });
 
 const chatPreview = document.getElementById('chat-preview');
 const chatContainer = document.getElementById('chat-container');
 const closeChatBtn = document.getElementById('closeChatBtn');
-
-chatPreview.addEventListener('click', () => {
-  chatContainer.classList.add('expanded');
-  document.getElementById('chatInput').focus();
-});
-closeChatBtn.addEventListener('click', () => {
-  chatContainer.classList.remove('expanded');
-});
-
+chatPreview.addEventListener('click', () => { chatContainer.classList.add('expanded'); document.getElementById('chatInput').focus(); });
+closeChatBtn.addEventListener('click', () => { chatContainer.classList.remove('expanded'); });
 document.getElementById('sendChatBtn').addEventListener('click', () => {
   const m = document.getElementById('chatInput').value.trim();
   if (m) { socket.emit('chatMessage', { roomId: currentRoomId, nickname: myNickname, msg: m }); document.getElementById('chatInput').value = ''; }
 });
-
 socket.on('chatMessage', (d) => {
   playSound('chat');
   const box = document.getElementById('chat-messages');
