@@ -1,10 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Jua&display=swap');
 
-body { 
-  margin: 0; padding: 0; font-family: 'Jua', sans-serif; background-color: #111; 
-  display: flex; justify-content: center; align-items: center; 
-  height: 100dvh; overflow: hidden; 
-}
+body { margin: 0; padding: 0; font-family: 'Jua', sans-serif; background-color: #111; display: flex; justify-content: center; align-items: center; height: 100dvh; overflow: hidden; }
 
 #lobby { background: white; width: 90%; max-width: 400px; padding: 20px; border-radius: 15px; box-shadow: 0 10px 20px rgba(0,0,0,0.5); max-height: 90vh; overflow-y: auto; }
 #lobby h1 { text-align: center; color: #333; margin-top: 0; }
@@ -13,25 +9,16 @@ body {
 .stats-section { background: #fff3cd; border: 1px solid #ffeeba; text-align: center; color: #856404; }
 #lobby input, #lobby select, #lobby button { width: 100%; box-sizing: border-box; margin: 5px 0; padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 5px; font-family: 'Jua', sans-serif; }
 #createRoomBtn { background-color: #ffcccc; border: 2px solid #ff6b6b; color: #333; cursor: pointer; font-weight: bold; transition: 0.2s; }
-#createRoomBtn:hover { transform: scale(1.02); }
-#roomList { list-style: none; padding: 0; margin: 0; }
-.room-item { background: white; border: 1px solid #ccc; padding: 10px; margin-bottom: 5px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
 
-#game-board { 
-  width: 100%; max-width: 450px; height: 100dvh; 
-  background: linear-gradient( to bottom, #ffcccc 0%, #ffcccc 25%, #ccffcc 25%, #ccffcc 50%, #ffee99 50%, #ffee99 75%, #cce6ff 75%, #cce6ff 100% ); 
-  position: relative; overflow: hidden; box-sizing: border-box; border: 2px solid #000;
-}
+#game-board { width: 100%; max-width: 450px; height: 100dvh; background: linear-gradient( to bottom, #ffcccc 0%, #ffcccc 25%, #ccffcc 25%, #ccffcc 50%, #ffee99 50%, #ffee99 75%, #cce6ff 75%, #cce6ff 100% ); position: relative; overflow: hidden; box-sizing: border-box; border: 2px solid #000; }
 
 .bg-emoji { position: absolute; left: 50%; transform: translateX(-50%); font-size: 100px; opacity: 0.12; z-index: 1; pointer-events: none; }
 #combo-text { position: absolute; top: 38%; left: 50%; transform: translate(-50%, -50%) rotate(-5deg); font-size: 32px; color: white; text-shadow: 2px 2px 0 #000; z-index: 10; white-space: nowrap; pointer-events: none; }
-
-/* 신규: 낸 사람 표시 텍스트 */
 #last-played-name { position: absolute; top: 32%; left: 50%; transform: translate(-50%, -50%); color: #ffeb3b; font-size: 14px; text-shadow: 1px 1px 2px #000; z-index: 10; font-weight: bold; }
 
 #center-field { position: absolute; top: 48%; left: 50%; transform: translate(-50%, -50%); display: flex; gap: 4px; z-index: 20; }
 
-.card { width: 40px; height: 58px; border-radius: 6px; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; border: 2px solid; background-color: #fff; z-index: 5; box-shadow: 1px 2px 5px rgba(0,0,0,0.2); }
+.card { width: 40px; height: 58px; border-radius: 6px; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; border: 2px solid; background-color: #fff; z-index: 5; box-shadow: 1px 2px 5px rgba(0,0,0,0.2); transition: transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1); }
 .card .number { font-weight: bold; font-size: 20px; }
 .card .suit { font-size: 14px; margin-top: -3px; }
 .card.suit-☀️ { background-color: #ffebeb; border-color: #cc0000; color: #cc0000; }  
@@ -40,18 +27,13 @@ body {
 .card.suit-☁️ { background-color: #e6f2ff; border-color: #0066cc; color: #0066cc; }  
 
 #opponents { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; pointer-events: none; }
-.opponent-area { position: absolute; pointer-events: auto; text-align: center; background: rgba(255,255,255,0.8); padding: 4px 6px; border-radius: 8px; border: 1.5px solid #333; width: max-content; transition: 0.2s;}
-/* 신규: 턴 활성화 시 글로우 효과 */
+.opponent-area { position: absolute; pointer-events: auto; text-align: center; background: rgba(255,255,255,0.8); padding: 4px 6px; border-radius: 8px; border: 1.5px solid #333; width: max-content; transition: 0.2s; }
 .opponent-area.is-turn { border-color: #ffeb3b; box-shadow: 0 0 10px #ffeb3b; background: rgba(255, 255, 255, 0.95); z-index: 10;}
-.opponent-name { font-size: 10px; font-weight: bold; margin-bottom: 2px; }
-
-/* 신규: 턴 뱃지 */
-.turn-badge { background: #ffeb3b; color: #000; padding: 2px 6px; border-radius: 5px; font-size: 9px; font-weight: bold; display: inline-block; margin-bottom: 3px; animation: pulse 1s infinite alternate; }
-
+.opponent-name { font-size: 11px; font-weight: bold; margin-bottom: 2px; }
+.turn-badge { background: #ffeb3b; color: #000; padding: 2px 6px; border-radius: 5px; font-size: 9px; font-weight: bold; display: inline-block; margin-bottom: 3px; }
 .opponent-hand { display: flex; flex-direction: row; justify-content: center; align-items: center; gap: 0; flex-wrap: nowrap; }
 .card-back { width: 10px; height: 18px; background-color: #222; border: 1px solid #aaa; border-radius: 2px; margin-left: -6px; }
 .card-back:first-child { margin-left: 0; }
-/* 신규: 남은 카드 수 뱃지 */
 .card-count-badge { font-size: 10px; color: #fff; background: #333; padding: 1px 4px; border-radius: 4px; margin-left: 5px; font-weight: bold; border: 1px solid #aaa; }
 
 .pos-top { top: 75px; left: 50%; transform: translateX(-50%); }
@@ -62,13 +44,12 @@ body {
 
 #system-log-container { position: absolute; left: 8px; top: 8px; width: 100px; height: 60px; background: rgba(0,0,0,0.4); border-radius: 6px; overflow-y: auto; z-index: 100; padding: 4px; }
 #system-logs { font-size: 9px; color: #fff; line-height: 1.2; }
-
 #top-right-ui { position: absolute; right: 8px; top: 8px; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; z-index: 100; pointer-events: none;}
 #hand-ranking-guide { background: rgba(0,0,0,0.6); color: #fff; padding: 4px 6px; border-radius: 5px; font-size: 9px; line-height: 1.3; text-align: right; }
 #round-indicator-text { background: #ffeb3b; color: #000; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: bold; box-shadow: 1px 1px 3px rgba(0,0,0,0.3); }
 #my-coins-display { background: rgba(0,0,0,0.8); color: #ffeb3b; padding: 2px 10px; border-radius: 10px; font-size: 12px; border: 1px solid #fff; font-weight: bold; }
 
-#chat-container { position: absolute; left: 8px; bottom: 115px; width: 150px; background: rgba(0,0,0,0.6); border-radius: 6px; z-index: 100; padding: 4px; transition: 0.2s ease-in-out; }
+#chat-container { position: absolute; left: 8px; bottom: 135px; width: 150px; background: rgba(0,0,0,0.6); border-radius: 6px; z-index: 100; padding: 4px; transition: 0.2s ease-in-out; }
 #chat-preview { font-size: 11px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; padding: 2px; }
 #chat-full { display: none; flex-direction: column; height: 110px; }
 #chat-container.expanded #chat-preview { display: none; }
@@ -79,7 +60,7 @@ body {
 .chat-input-area button { padding: 0 4px; font-size: 10px; border: none; background: #fff; border-radius: 3px; font-family: 'Jua'; cursor: pointer;}
 #closeChatBtn { background: #444; color: #fff; border: none; border-radius: 3px; padding: 2px 0; font-size: 10px; cursor: pointer; font-family: 'Jua'; }
 
-.controls { position: absolute; left: 50%; top: 68%; transform: translate(-50%, -50%); display: flex; gap: 12px; z-index: 100; }
+.controls { position: absolute; left: 50%; top: 62%; transform: translate(-50%, -50%); display: flex; gap: 12px; z-index: 100; }
 .controls button { padding: 10px 18px; font-family: 'Jua'; font-size: 16px; border-radius: 8px; border: 2px solid #000; cursor: pointer; box-shadow: 2px 2px 0 #000; transition: 0.1s;}
 .controls button:active { transform: scale(0.9); }
 #playBtn { background-color: #ffcccc; }
@@ -91,11 +72,10 @@ body {
 #combo-guide { font-size: 11px; color: #fff; background: rgba(0,0,0,0.6); padding: 2px 10px; border-radius: 8px; }
 #my-turn-indicator { background: #ffeb3b; color: #000; padding: 2px 12px; border-radius: 10px; font-size: 12px; font-weight: bold; border: 1.5px solid #000; display: none; }
 
-#my-hand { display: flex; justify-content: center; padding: 0 5px; }
-.card.in-hand { margin-left: -20px; transition: 0.1s; }
-.card.in-hand:first-child { margin-left: 0; }
-.card.in-hand:hover { transform: translateY(-15px); z-index: 60; }
-.card.selected { transform: translateY(-25px) !important; border-color: #1890ff !important; box-shadow: 0 0 10px #1890ff; z-index: 60; }
+#my-hand { display: flex; justify-content: center; flex-wrap: wrap; gap: 5px; padding: 0 10px; width: 95%; max-height: 140px; overflow-y: visible; }
+.card.in-hand { margin-left: 0; }
+@media (hover: hover) and (pointer: fine) { .card.in-hand:hover { transform: translateY(-15px); z-index: 60; } }
+.card.selected { transform: translateY(-40px) !important; border-color: #1890ff !important; box-shadow: 0 0 15px #1890ff; z-index: 60; }
 
 #round-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; background: rgba(0,0,0,0.9); z-index: 2000; display: flex; justify-content: center; align-items: center; }
 .modal-box { background: #222; border: 3px solid #ffeb3b; border-radius: 15px; padding: 20px; width: 85%; max-width: 300px; text-align: center; color: #fff; }
@@ -111,5 +91,3 @@ body {
 .ranking-1st { color: #4ade80; font-weight: bold; font-size: 16px; }
 #modal-current-coins { font-size: 16px; margin: 10px 0; color: #ffeb3b; background: rgba(255,235,59,0.1); padding: 5px; border-radius: 8px;}
 #modal-confirm-btn { background: #ffeb3b; color: #000; border: 2px solid #000; padding: 12px 20px; border-radius: 8px; font-family: 'Jua'; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 10px; box-shadow: 2px 2px 0px #000;}
-
-@keyframes pulse { from { transform: scale(1); } to { transform: scale(1.05); } }
