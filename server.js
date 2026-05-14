@@ -11,7 +11,6 @@ const server = http.createServer(app);
 
 const io = new Server(server, { cors: { origin: "*", methods: ["GET", "POST"] } });
 
-// ★ 서버 데이터 영구 보존용 파일 시스템
 const DATA_FILE = path.join(__dirname, 'lexio_data.json');
 let rooms = {};
 let globalUsers = {}; 
@@ -19,7 +18,6 @@ let globalUsers = {};
 const SUITS = ['☁️', '⭐', '🌙', '☀️']; 
 const AVATARS = ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐦', '🐥', '🦆', '🦉', '🦇', '🐺', '🐗', '🐴', '🦄', '🐝', '🐛', '🦋', '🐌', '🐢', '🐙', '🦑', '🦐', '🦀', '🐡', '🐠', '🐟', '🐬', '🐳', '🐋', '🦈', '🐊', '🐅', '🐆', '🦓', '🦍', '🐘', '🦏', '🐪', '🐫', '🦒', '🐃', '🐂', '🐄', '🐎', '🐖', '🐏', '🐑', '🐐', '🦌', '🐕', '🐩', '🐈', '🐓', '🦃', '🕊️', '🐇', '🐁', '🐀', '🐿️'];
 
-// --- 데이터 자동 복구 및 백업 함수 ---
 function loadData() {
     try {
         if (fs.existsSync(DATA_FILE)) {
@@ -29,7 +27,8 @@ function loadData() {
             for (let rid in loadedRooms) {
                 rooms[rid] = loadedRooms[rid];
                 rooms[rid].readyPlayers = new Set(rooms[rid].readyPlayers || []);
-                rooms[rid].players.forEach(p => { p.disconnectTimer = null; p.isDisconnected = true; }); // 서버 재시작 시 전원 오프라인 처리
+                rooms[rid].restartReadyPlayers = new Set(rooms[rid].restartReadyPlayers || []);
+                rooms[rid].players.forEach(p => { p.disconnectTimer = null; p.isDisconnected = true; }); 
             }
             console.log('[시스템] 저장된 게임 데이터를 성공적으로 불러왔습니다.');
         }
@@ -40,15 +39,14 @@ function saveData() {
     try {
         const safeRooms = {};
         for(let rid in rooms) {
-            safeRooms[rid] = { ...rooms[rid], readyPlayers: Array.from(rooms[rid].readyPlayers) };
+            safeRooms[rid] = { ...rooms[rid], readyPlayers: Array.from(rooms[rid].readyPlayers), restartReadyPlayers: Array.from(rooms[rid].restartReadyPlayers || []) };
         }
         fs.writeFileSync(DATA_FILE, JSON.stringify({ rooms: safeRooms, globalUsers }));
     } catch(e) { console.error('[오류] 데이터 저장 실패:', e); }
 }
 
 loadData();
-setInterval(saveData, 5000); // 5초마다 모든 진행상황 하드디스크에 자동 백업
-// ------------------------------------
+setInterval(saveData, 5000); 
 
 function getLexioRank(num) { const number = Number(num); if (number === 1) return 14; if (number === 2) return 15; return number - 2; }
 function getSuitRank(suit) { if (suit === '☁️') return 1; if (suit === '⭐') return 2; if (suit === '🌙') return 3; if (suit === '☀️') return 4; return 0; }
@@ -186,7 +184,7 @@ io.on('connection', (socket) => {
         }
     }
     const roomId = 'room_' + Date.now();
-    rooms[roomId] = { id: roomId, name: roomName, maxPlayers: parseInt(maxPlayers), players: [], currentTurn: 0, field: [], comboText: "대기중", lastPlayedName: "", isPlaying: false, isRoundEnding: false, passCount: 0, currentRound: 1, maxRound: 5, roundSummary: null, readyPlayers: new Set() };
+    rooms[roomId] = { id: roomId, name: roomName, maxPlayers: parseInt(maxPlayers), players: [], currentTurn: 0, field: [], comboText: "대기중", lastPlayedName: "", isPlaying: false, isRoundEnding: false, passCount: 0, currentRound: 1, maxRound: 5, roundSummary: null, readyPlayers: new Set(), restartReadyPlayers: new Set() };
     joinRoomLogic(socket, roomId, nickname, sessionId);
   });
 
@@ -234,7 +232,9 @@ io.on('connection', (socket) => {
     activePlayers.forEach((p, index) => {
       p.hand = deck.slice(index * cardsPerPlayer, (index + 1) * cardsPerPlayer);
     });
-    room.field = []; room.passCount = 0; room.comboText = ""; room.roundSummary = null; room.lastPlayedName = ""; room.readyPlayers.clear();
+    room.field = []; room.passCount = 0; room.comboText = ""; room.roundSummary = null; room.lastPlayedName = ""; 
+    room.readyPlayers.clear();
+    if(room.restartReadyPlayers) room.restartReadyPlayers.clear();
 
     if (isNewGame) {
       let startPlayerIndex = 0;
@@ -264,15 +264,25 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('restartGame', ({ roomId }) => {
+  // ★ 새 게임 시작 레디 이벤트
+  socket.on('readyRestartGame', ({ roomId, sessionId }) => {
     const room = rooms[roomId];
-    if (room && (!room.isPlaying || (room.roundSummary && room.roundSummary.isGameOver))) {
+    if (!room || !room.roundSummary || !room.roundSummary.isGameOver) return;
+
+    if (!room.restartReadyPlayers) room.restartReadyPlayers = new Set();
+    room.restartReadyPlayers.add(sessionId);
+    
+    // 이 방에 남아있는 인원 수만 체크
+    const activeCount = room.players.length; 
+    io.to(roomId).emit('readyStatus', { current: room.restartReadyPlayers.size, total: activeCount });
+
+    if (room.restartReadyPlayers.size >= activeCount) {
         room.currentRound = 1;
         room.isRoundEnding = false;
         room.players.forEach(p => { p.coins = 64; p.isOut = false; p.hand = []; });
         room.isPlaying = true;
         dealCards(room, true);
-        io.to(roomId).emit('updateRoom', room);
+        io.to(roomId).emit('updateRoom', room); 
     }
   });
 
@@ -381,7 +391,21 @@ io.on('connection', (socket) => {
         player.isDisconnected = true;
         if (!room.isPlaying) {
           room.players.splice(playerIndex, 1);
-          if (room.players.length === 0) delete rooms[roomId];
+          if (room.players.length === 0) {
+              delete rooms[roomId];
+          } else {
+              // 대기방에서 누군가 나갔을 때 레디 정보 갱신
+              if (room.roundSummary && room.roundSummary.isGameOver && room.restartReadyPlayers) {
+                  room.restartReadyPlayers.delete(player.sessionId);
+                  io.to(roomId).emit('readyStatus', { current: room.restartReadyPlayers.size, total: room.players.length });
+                  if (room.players.length > 0 && room.restartReadyPlayers.size >= room.players.length) {
+                      room.currentRound = 1; room.isRoundEnding = false;
+                      room.players.forEach(p => { p.coins = 64; p.isOut = false; p.hand = []; });
+                      room.isPlaying = true; dealCards(room, true);
+                      io.to(roomId).emit('updateRoom', room); 
+                  }
+              }
+          }
         }
         io.to(roomId).emit('updateRoom', room);
         io.emit('roomList', getRoomList());
