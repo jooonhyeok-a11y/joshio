@@ -10,16 +10,11 @@ const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*", methods: ["GET", "POST"] } });
 
 const rooms = {};
+const globalUsers = {}; // ★ 계정 및 전적 저장용 전역 객체 { password, sessionId, wins, maxCoins }
 const SUITS = ['☁️', '⭐', '🌙', '☀️']; 
-// ★ 아바타용 랜덤 이모지 풀
 const AVATARS = ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐦', '🐥', '🦆', '🦉', '🦇', '🐺', '🐗', '🐴', '🦄', '🐝', '🐛', '🦋', '🐌', '🐢', '🐙', '🦑', '🦐', '🦀', '🐡', '🐠', '🐟', '🐬', '🐳', '🐋', '🦈', '🐊', '🐅', '🐆', '🦓', '🦍', '🐘', '🦏', '🐪', '🐫', '🦒', '🐃', '🐂', '🐄', '🐎', '🐖', '🐏', '🐑', '🐐', '🦌', '🐕', '🐩', '🐈', '🐓', '🦃', '🕊️', '🐇', '🐁', '🐀', '🐿️'];
 
-function getLexioRank(num) { 
-  const number = Number(num);
-  if (number === 1) return 14; 
-  if (number === 2) return 15; 
-  return number - 2; 
-}
+function getLexioRank(num) { const number = Number(num); if (number === 1) return 14; if (number === 2) return 15; return number - 2; }
 function getSuitRank(suit) { if (suit === '☁️') return 1; if (suit === '⭐') return 2; if (suit === '🌙') return 3; if (suit === '☀️') return 4; return 0; }
 
 function getStraightInfo(cards) {
@@ -46,9 +41,7 @@ function generateDeck(playerCount) {
   if (playerCount === 3) maxNum = 9;
   if (playerCount === 4) maxNum = 13;
   let deck = [];
-  SUITS.forEach(suit => {
-    for (let i = 1; i <= maxNum; i++) deck.push({ suit, number: i, id: `${suit}${i}` });
-  });
+  SUITS.forEach(suit => { for (let i = 1; i <= maxNum; i++) deck.push({ suit, number: i, id: `${suit}${i}` }); });
   return deck.sort(() => Math.random() - 0.5);
 }
 
@@ -78,7 +71,6 @@ function analyzeCombo(cards) {
     const counts = {};
     cards.forEach(c => counts[getLexioRank(c.number)] = (counts[getLexioRank(c.number)] || 0) + 1);
     const countVals = Object.values(counts).sort((a,b)=>b-a);
-
     if (straightInfo.valid && isFlush) return { valid: true, type: 5, power: 5, rank: straightInfo.rank, suitRank: getSuitRank(getStraightHighestCard(cards).suit), name: "스트레이트 플러시" };
     if (countVals[0] === 4) return { valid: true, type: 5, power: 4, rank: Number(Object.keys(counts).find(k => counts[k] === 4)), suitRank: 4, name: "포카드" };
     if (countVals[0] === 3 && countVals[1] === 2) return { valid: true, type: 5, power: 3, rank: Number(Object.keys(counts).find(k => counts[k] === 3)), suitRank: 4, name: "풀하우스" };
@@ -110,11 +102,20 @@ function nextTurn(room) {
   room.currentTurn = next;
 }
 
-function sendSystemLog(roomId, msg) { io.to(roomId).emit('systemLog', msg); }
-
 io.on('connection', (socket) => {
   socket.emit('roomList', getRoomList());
   
+  // ★ 로그인 및 패스워드 인증 로직 (완벽한 복구 지원)
+  socket.on('authenticate', ({ nickname, password }, callback) => {
+    if (!nickname || !password) return callback({ success: false, msg: '닉네임과 비밀번호를 입력하세요.' });
+    if (globalUsers[nickname]) {
+      if (globalUsers[nickname].password !== password) return callback({ success: false, msg: '비밀번호가 일치하지 않습니다.' });
+    } else {
+      globalUsers[nickname] = { password, sessionId: 'sess_' + Date.now() + Math.random().toString(36).substr(2), wins: 0, maxCoins: 64 };
+    }
+    callback({ success: true, sessionId: globalUsers[nickname].sessionId, stats: globalUsers[nickname] });
+  });
+
   socket.on('checkReconnect', ({ sessionId }) => {
     if (!sessionId) return;
     for (const roomId in rooms) {
@@ -126,7 +127,6 @@ io.on('connection', (socket) => {
         player.isDisconnected = false;
         socket.join(roomId);
         socket.emit('reconnectSuccess', room.id);
-        sendSystemLog(roomId, `[재접속] ${player.nickname}님이 다시 연결되었습니다.`);
         io.to(roomId).emit('updateRoom', room);
         return;
       }
@@ -135,7 +135,7 @@ io.on('connection', (socket) => {
 
   socket.on('createRoom', ({ roomName, maxPlayers, nickname, sessionId }) => {
     const roomId = 'room_' + Date.now();
-    rooms[roomId] = { id: roomId, name: roomName, maxPlayers: parseInt(maxPlayers), players: [], currentTurn: 0, field: [], comboText: "대기중", lastPlayedName: "", isPlaying: false, passCount: 0, currentRound: 1, maxRound: 5, roundSummary: null, isFirstPlay: false };
+    rooms[roomId] = { id: roomId, name: roomName, maxPlayers: parseInt(maxPlayers), players: [], currentTurn: 0, field: [], comboText: "대기중", lastPlayedName: "", isPlaying: false, isRoundEnding: false, passCount: 0, currentRound: 1, maxRound: 5, roundSummary: null, isFirstPlay: false, readyPlayers: new Set() };
     joinRoomLogic(socket, roomId, nickname, sessionId);
   });
 
@@ -160,7 +160,6 @@ io.on('connection', (socket) => {
     
     socket.join(roomId);
     room.players.push({ id: socket.id, sessionId, nickname, hand: [], coins: 64, isOut: false, isDisconnected: false, avatar: '👤' });
-    sendSystemLog(roomId, `[입장] ${nickname}님이 들어왔습니다.`);
     
     if (room.players.length === room.maxPlayers && !room.isPlaying) {
       room.isPlaying = true;
@@ -176,19 +175,16 @@ io.on('connection', (socket) => {
     const deck = generateDeck(activePlayers.length); 
     const cardsPerPlayer = Math.floor(deck.length / activePlayers.length);
     
-    // ★ 새 게임일 때만 아바타 섞기 & 턴 결정
     if (isNewGame) {
       const shuffledAvatars = [...AVATARS].sort(() => Math.random() - 0.5);
       room.players.forEach((p, i) => { p.avatar = shuffledAvatars[i]; });
       room.isFirstPlay = true;
-    } else {
-      room.isFirstPlay = false;
     }
 
     activePlayers.forEach((p, index) => {
       p.hand = deck.slice(index * cardsPerPlayer, (index + 1) * cardsPerPlayer);
     });
-    room.field = []; room.passCount = 0; room.comboText = ""; room.roundSummary = null; room.lastPlayedName = "";
+    room.field = []; room.passCount = 0; room.comboText = ""; room.roundSummary = null; room.lastPlayedName = ""; room.readyPlayers.clear();
 
     if (isNewGame) {
       let startPlayerIndex = 0;
@@ -200,10 +196,31 @@ io.on('connection', (socket) => {
     }
   }
 
+  // ★ 레디 시스템 기반 다음 라운드 진행
+  socket.on('readyNextRound', ({ roomId, sessionId }) => {
+    const room = rooms[roomId];
+    if (!room || !room.roundSummary || room.roundSummary.isGameOver) return;
+
+    room.readyPlayers.add(sessionId);
+    const activeCount = room.players.filter(p => !p.isOut).length;
+    
+    io.to(roomId).emit('readyStatus', { current: room.readyPlayers.size, total: activeCount });
+
+    if (room.readyPlayers.size >= activeCount) {
+        room.currentRound++; 
+        dealCards(room, false);
+        room.currentTurn = room.players.findIndex(p => p.nickname === room.roundSummary.winnerName);
+        if(room.currentTurn === -1) room.currentTurn = 0;
+        room.isRoundEnding = false;
+        io.to(roomId).emit('updateRoom', room); 
+    }
+  });
+
   socket.on('restartGame', ({ roomId }) => {
     const room = rooms[roomId];
-    if (room && !room.isPlaying) {
+    if (room && (!room.isPlaying || (room.roundSummary && room.roundSummary.isGameOver))) {
         room.currentRound = 1;
+        room.isRoundEnding = false;
         room.players.forEach(p => { p.coins = 64; p.isOut = false; p.hand = []; });
         room.isPlaying = true;
         dealCards(room, true);
@@ -211,14 +228,17 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('playCards', ({ roomId, cards }) => {
+  socket.on('playCards', ({ roomId, sessionId, cards }) => {
     const room = rooms[roomId];
-    if (!room) return;
+    if (!room || room.isRoundEnding) return; // 세리머니 중 조작 방지
+
+    const playerIndex = room.players.findIndex(p => p.sessionId === sessionId);
+    if (playerIndex === -1 || room.currentTurn !== playerIndex) return;
+    const player = room.players[playerIndex];
 
     if (room.isFirstPlay) {
       const hasCloud3 = cards.some(c => c.suit === '☁️' && Number(c.number) === 3);
       if (!hasCloud3) return socket.emit('playError', '첫 라운드 첫 턴에는 반드시 파란색(구름) 3을 포함하여 내야 합니다!');
-      room.isFirstPlay = false;
     }
 
     const newCombo = analyzeCombo(cards);
@@ -226,77 +246,79 @@ io.on('connection', (socket) => {
     const lastCombo = room.field.length > 0 ? analyzeCombo(room.field) : null;
     if (!canPlay(lastCombo, newCombo)) return socket.emit('playError', '더 높은 패를 내야 합니다.');
 
-    room.field = cards; room.comboText = newCombo.name; room.passCount = 0; 
-    const playerIndex = room.players.findIndex(p => p.id === socket.id);
-    const player = room.players[playerIndex];
+    room.field = cards; room.comboText = newCombo.name; room.passCount = 0; room.isFirstPlay = false;
     player.hand = player.hand.filter(hc => !cards.find(c => c.id === hc.id));
     room.lastPlayedName = player.nickname;
 
-    const cardStrs = cards.map(c => `${c.suit}${c.number}`).join(', ');
-    sendSystemLog(roomId, `[플레이] ${player.nickname}: ${newCombo.name} (${cardStrs})`);
-
     if (player.hand.length === 0) {
-      let summaryData = {};
-      let bankruptPlayerName = null;
-      room.players.forEach(p => {
-        const twoCount = p.hand.filter(c => Number(c.number) === 2).length;
-        p.effCards = p.hand.length * Math.pow(2, twoCount);
-        p.roundChange = 0;
-        summaryData[p.sessionId] = { nickname: p.nickname, remainingTiles: p.hand.length, exchanges: {}, roundChange: 0, totalCoins: 0, avatar: p.avatar };
-      });
-      const activePlayers = room.players.filter(p => !p.isOut);
-      for (let i = 0; i < activePlayers.length; i++) {
-        for (let j = i + 1; j < activePlayers.length; j++) {
-          let p1 = activePlayers[i], p2 = activePlayers[j];
-          let diff = p1.effCards - p2.effCards;
-          if (diff !== 0) {
-            p1.roundChange -= diff; p2.roundChange += diff;
-            summaryData[p1.sessionId].exchanges[p2.nickname] = -diff; 
-            summaryData[p2.sessionId].exchanges[p1.nickname] = diff;
+      room.isRoundEnding = true;
+      const winMsg = `🎉 ${player.nickname} 남은패 없음! ${room.currentRound}라운드 승리!`;
+      room.comboText = winMsg;
+      io.to(roomId).emit('updateRoom', room);
+      io.to(roomId).emit('roundEndAnimation', { winnerName: player.nickname, msg: winMsg });
+
+      setTimeout(() => {
+        let summaryData = {};
+        let bankruptPlayerName = null;
+        room.players.forEach(p => {
+          const twoCount = p.hand.filter(c => Number(c.number) === 2).length;
+          p.effCards = p.hand.length * Math.pow(2, twoCount);
+          p.roundChange = 0;
+          summaryData[p.sessionId] = { nickname: p.nickname, remainingTiles: p.hand.length, twoCount: twoCount, effCards: p.effCards, exchanges: {}, roundChange: 0, totalCoins: 0, avatar: p.avatar };
+        });
+
+        const activePlayers = room.players.filter(p => !p.isOut);
+        for (let i = 0; i < activePlayers.length; i++) {
+          for (let j = i + 1; j < activePlayers.length; j++) {
+            let p1 = activePlayers[i], p2 = activePlayers[j];
+            let diff = p1.effCards - p2.effCards;
+            if (diff !== 0) {
+              p1.roundChange -= diff; p2.roundChange += diff;
+              summaryData[p1.sessionId].exchanges[p2.nickname] = -diff; 
+              summaryData[p2.sessionId].exchanges[p1.nickname] = diff;
+            }
           }
         }
-      }
-      activePlayers.forEach(p => {
-        p.coins = Number(p.coins) + Number(p.roundChange);
-        if (p.coins <= 0) { p.coins = 0; p.isOut = true; bankruptPlayerName = p.nickname; }
-        summaryData[p.sessionId].roundChange = p.roundChange;
-        summaryData[p.sessionId].totalCoins = p.coins;
-      });
-      io.to(roomId).emit('gameWin', { winnerId: player.id, winnerName: player.nickname });
-      const isGameOver = (bankruptPlayerName !== null) || room.currentRound >= room.maxRound || activePlayers.filter(p => !p.isOut).length <= 1;
-      let gameEndReason = ""; let finalRankings = null; let overallWinnerName = "";
-      if (isGameOver) {
-          finalRankings = room.players.map(p => ({ nickname: p.nickname, coins: p.coins, avatar: p.avatar })).sort((a,b) => b.coins - a.coins);
-          overallWinnerName = finalRankings[0].nickname;
-          if (bankruptPlayerName) gameEndReason = `${bankruptPlayerName} 파산! 경기 종료!`;
-          else if (room.currentRound >= room.maxRound) gameEndReason = `${room.maxRound}라운드 완료! 경기 종료!`;
-          else gameEndReason = "경기 종료!";
-      }
-      room.roundSummary = { isGameOver, data: summaryData, winnerName: player.nickname, gameEndReason, finalRankings, overallWinnerName };
-      room.comboText = isGameOver ? `🚩 경기 종료!` : `🎉 ${player.nickname} 승리!`;
-      if (isGameOver) {
-        room.isPlaying = false;
-        io.to(roomId).emit('updateRoom', room);
-      } else {
-        io.to(roomId).emit('updateRoom', room);
-        setTimeout(() => {
-          if (room.roundSummary && !room.roundSummary.isGameOver) {
-            room.currentRound++; 
-            dealCards(room, false);
-            room.currentTurn = playerIndex; 
-            io.to(roomId).emit('updateRoom', room); 
+        
+        activePlayers.forEach(p => {
+          p.coins = Number(p.coins) + Number(p.roundChange);
+          if (p.coins <= 0) { p.coins = 0; p.isOut = true; bankruptPlayerName = p.nickname; }
+          summaryData[p.sessionId].roundChange = p.roundChange;
+          summaryData[p.sessionId].totalCoins = p.coins;
+          // 전적 업데이트
+          if(globalUsers[p.nickname]) {
+              if (p.coins > globalUsers[p.nickname].maxCoins) globalUsers[p.nickname].maxCoins = p.coins;
+              if (p.id === player.id) globalUsers[p.nickname].wins += 1;
           }
-        }, 10000);
-      }
+        });
+
+        const isGameOver = (bankruptPlayerName !== null) || room.currentRound >= room.maxRound || activePlayers.filter(p => !p.isOut).length <= 1;
+        let gameEndReason = ""; let finalRankings = null; let overallWinnerName = "";
+        
+        if (isGameOver) {
+            finalRankings = room.players.map(p => ({ nickname: p.nickname, coins: p.coins, avatar: p.avatar })).sort((a,b) => b.coins - a.coins);
+            overallWinnerName = finalRankings[0].nickname;
+            if (bankruptPlayerName) gameEndReason = `${bankruptPlayerName} 파산! 경기 종료!`;
+            else gameEndReason = `${room.maxRound}라운드 완료! 경기 종료!`;
+        }
+
+        room.roundSummary = { isGameOver, data: summaryData, winnerName: player.nickname, gameEndReason, finalRankings, overallWinnerName, roundNum: room.currentRound };
+        if(isGameOver) room.isPlaying = false;
+        
+        io.to(roomId).emit('showRoundSummary', room);
+      }, 5000); // 5초 뒤 정산창 띄움
       return;
     }
     nextTurn(room);
     io.to(roomId).emit('updateRoom', room);
   });
 
-  socket.on('passTurn', ({ roomId }) => {
+  socket.on('passTurn', ({ roomId, sessionId }) => {
     const room = rooms[roomId];
-    if (!room || room.field.length === 0) return;
+    if (!room || room.field.length === 0 || room.isRoundEnding) return;
+    const playerIndex = room.players.findIndex(p => p.sessionId === sessionId);
+    if (playerIndex === -1 || room.currentTurn !== playerIndex) return;
+
     room.passCount += 1;
     nextTurn(room);
     const activeCount = room.players.filter(p => !p.isOut && !p.isDisconnected).length;
