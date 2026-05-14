@@ -11,6 +11,8 @@ const io = new Server(server, { cors: { origin: "*", methods: ["GET", "POST"] } 
 
 const rooms = {};
 const SUITS = ['☁️', '⭐', '🌙', '☀️']; 
+// ★ 아바타용 랜덤 이모지 풀
+const AVATARS = ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐦', '🐥', '🦆', '🦉', '🦇', '🐺', '🐗', '🐴', '🦄', '🐝', '🐛', '🦋', '🐌', '🐢', '🐙', '🦑', '🦐', '🦀', '🐡', '🐠', '🐟', '🐬', '🐳', '🐋', '🦈', '🐊', '🐅', '🐆', '🦓', '🦍', '🐘', '🦏', '🐪', '🐫', '🦒', '🐃', '🐂', '🐄', '🐎', '🐖', '🐏', '🐑', '🐐', '🦌', '🐕', '🐩', '🐈', '🐓', '🦃', '🕊️', '🐇', '🐁', '🐀', '🐿️'];
 
 function getLexioRank(num) { 
   const number = Number(num);
@@ -25,8 +27,6 @@ function getStraightInfo(cards) {
   const str = nums.join(',');
   if (str === '1,2,3,4,5') return { valid: true, rank: 999 }; 
   if (str === '2,3,4,5,6') return { valid: true, rank: 998 }; 
-  if (str === '1,12,13,14,15') return { valid: true, rank: 997 }; 
-  
   let isConsecutive = true;
   for(let i=1; i<5; i++) { if (nums[i] !== nums[i-1] + 1) { isConsecutive = false; break; } }
   if (isConsecutive && nums[0] >= 3) return { valid: true, rank: getLexioRank(nums[4]) };
@@ -60,9 +60,7 @@ function getRoomList() {
 function analyzeCombo(cards) {
   cards.sort((a,b) => getLexioRank(a.number) - getLexioRank(b.number) || getSuitRank(a.suit) - getSuitRank(b.suit));
   const len = cards.length;
-  
   if (len === 1) return { valid: true, type: 1, rank: getLexioRank(cards[0].number), suitRank: getSuitRank(cards[0].suit), name: '싱글' };
-  
   if (len === 2) {
     if (Number(cards[0].number) !== Number(cards[1].number)) return { valid: false };
     return { valid: true, type: 2, rank: getLexioRank(cards[0].number), suitRank: getSuitRank(cards[1].suit), name: '페어' }; 
@@ -137,7 +135,6 @@ io.on('connection', (socket) => {
 
   socket.on('createRoom', ({ roomName, maxPlayers, nickname, sessionId }) => {
     const roomId = 'room_' + Date.now();
-    // ★ lastPlayedName 필드 추가
     rooms[roomId] = { id: roomId, name: roomName, maxPlayers: parseInt(maxPlayers), players: [], currentTurn: 0, field: [], comboText: "대기중", lastPlayedName: "", isPlaying: false, passCount: 0, currentRound: 1, maxRound: 5, roundSummary: null, isFirstPlay: false };
     joinRoomLogic(socket, roomId, nickname, sessionId);
   });
@@ -162,7 +159,7 @@ io.on('connection', (socket) => {
     if (room.players.length >= room.maxPlayers) return socket.emit('playError', '방이 가득 찼습니다.');
     
     socket.join(roomId);
-    room.players.push({ id: socket.id, sessionId, nickname, hand: [], coins: 64, isOut: false, isDisconnected: false });
+    room.players.push({ id: socket.id, sessionId, nickname, hand: [], coins: 64, isOut: false, isDisconnected: false, avatar: '👤' });
     sendSystemLog(roomId, `[입장] ${nickname}님이 들어왔습니다.`);
     
     if (room.players.length === room.maxPlayers && !room.isPlaying) {
@@ -178,21 +175,28 @@ io.on('connection', (socket) => {
     const activePlayers = room.players.filter(p => !p.isOut);
     const deck = generateDeck(activePlayers.length); 
     const cardsPerPlayer = Math.floor(deck.length / activePlayers.length);
+    
+    // ★ 새 게임일 때만 아바타 섞기 & 턴 결정
+    if (isNewGame) {
+      const shuffledAvatars = [...AVATARS].sort(() => Math.random() - 0.5);
+      room.players.forEach((p, i) => { p.avatar = shuffledAvatars[i]; });
+      room.isFirstPlay = true;
+    } else {
+      room.isFirstPlay = false;
+    }
+
     activePlayers.forEach((p, index) => {
       p.hand = deck.slice(index * cardsPerPlayer, (index + 1) * cardsPerPlayer);
     });
     room.field = []; room.passCount = 0; room.comboText = ""; room.roundSummary = null; room.lastPlayedName = "";
 
     if (isNewGame) {
-      room.isFirstPlay = true;
       let startPlayerIndex = 0;
       room.players.forEach((p, idx) => {
         if (p.hand.some(c => c.suit === '☁️' && Number(c.number) === 3)) startPlayerIndex = idx;
       });
       room.currentTurn = startPlayerIndex;
       room.comboText = "파란색 3을 가진 플레이어부터 시작!";
-    } else {
-      room.isFirstPlay = false;
     }
   }
 
@@ -203,7 +207,6 @@ io.on('connection', (socket) => {
         room.players.forEach(p => { p.coins = 64; p.isOut = false; p.hand = []; });
         room.isPlaying = true;
         dealCards(room, true);
-        // ★ room.currentTurn = 0; 삭제 완료! (이것이 선이 무조건 방장이 되는 버그의 원인이었습니다)
         io.to(roomId).emit('updateRoom', room);
     }
   });
@@ -224,12 +227,9 @@ io.on('connection', (socket) => {
     if (!canPlay(lastCombo, newCombo)) return socket.emit('playError', '더 높은 패를 내야 합니다.');
 
     room.field = cards; room.comboText = newCombo.name; room.passCount = 0; 
-    
     const playerIndex = room.players.findIndex(p => p.id === socket.id);
     const player = room.players[playerIndex];
     player.hand = player.hand.filter(hc => !cards.find(c => c.id === hc.id));
-    
-    // ★ 낸 사람 기록
     room.lastPlayedName = player.nickname;
 
     const cardStrs = cards.map(c => `${c.suit}${c.number}`).join(', ');
@@ -238,14 +238,12 @@ io.on('connection', (socket) => {
     if (player.hand.length === 0) {
       let summaryData = {};
       let bankruptPlayerName = null;
-
       room.players.forEach(p => {
         const twoCount = p.hand.filter(c => Number(c.number) === 2).length;
         p.effCards = p.hand.length * Math.pow(2, twoCount);
         p.roundChange = 0;
-        summaryData[p.sessionId] = { nickname: p.nickname, remainingTiles: p.hand.length, exchanges: {}, roundChange: 0, totalCoins: 0 };
+        summaryData[p.sessionId] = { nickname: p.nickname, remainingTiles: p.hand.length, exchanges: {}, roundChange: 0, totalCoins: 0, avatar: p.avatar };
       });
-
       const activePlayers = room.players.filter(p => !p.isOut);
       for (let i = 0; i < activePlayers.length; i++) {
         for (let j = i + 1; j < activePlayers.length; j++) {
@@ -258,30 +256,24 @@ io.on('connection', (socket) => {
           }
         }
       }
-      
       activePlayers.forEach(p => {
         p.coins = Number(p.coins) + Number(p.roundChange);
         if (p.coins <= 0) { p.coins = 0; p.isOut = true; bankruptPlayerName = p.nickname; }
         summaryData[p.sessionId].roundChange = p.roundChange;
         summaryData[p.sessionId].totalCoins = p.coins;
       });
-
       io.to(roomId).emit('gameWin', { winnerId: player.id, winnerName: player.nickname });
-      
       const isGameOver = (bankruptPlayerName !== null) || room.currentRound >= room.maxRound || activePlayers.filter(p => !p.isOut).length <= 1;
       let gameEndReason = ""; let finalRankings = null; let overallWinnerName = "";
-
       if (isGameOver) {
-          finalRankings = room.players.map(p => ({ nickname: p.nickname, coins: p.coins })).sort((a,b) => b.coins - a.coins);
+          finalRankings = room.players.map(p => ({ nickname: p.nickname, coins: p.coins, avatar: p.avatar })).sort((a,b) => b.coins - a.coins);
           overallWinnerName = finalRankings[0].nickname;
           if (bankruptPlayerName) gameEndReason = `${bankruptPlayerName} 파산! 경기 종료!`;
           else if (room.currentRound >= room.maxRound) gameEndReason = `${room.maxRound}라운드 완료! 경기 종료!`;
           else gameEndReason = "경기 종료!";
       }
-
       room.roundSummary = { isGameOver, data: summaryData, winnerName: player.nickname, gameEndReason, finalRankings, overallWinnerName };
       room.comboText = isGameOver ? `🚩 경기 종료!` : `🎉 ${player.nickname} 승리!`;
-      
       if (isGameOver) {
         room.isPlaying = false;
         io.to(roomId).emit('updateRoom', room);
@@ -308,8 +300,6 @@ io.on('connection', (socket) => {
     room.passCount += 1;
     nextTurn(room);
     const activeCount = room.players.filter(p => !p.isOut && !p.isDisconnected).length;
-    
-    // 모두 패스하여 필드가 정리될 때
     if (room.passCount >= activeCount - 1) {
       room.field = []; room.comboText = ""; room.passCount = 0; room.lastPlayedName = ""; 
     }
