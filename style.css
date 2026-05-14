@@ -74,7 +74,7 @@ body { margin: 0; padding: 0; font-family: 'Jua', sans-serif; background-color: 
 .card.selected { transform: translateY(-40px) !important; border-color: #1890ff !important; box-shadow: 0 0 15px #1890ff; z-index: 60; }
 
 #round-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; background: rgba(0,0,0,0.9); z-index: 2000; display: flex; justify-content: center; align-items: center; }
-.modal-box { background: #222; border: 3px solid #ffeb3b; border-radius: 15px; padding: 20px; width: 85%; max-width: 320px; text-align: center; color: #fff; }
+.modal-box { background: #222; border: 3px solid #ffeb3b; border-radius: 15px; padding: 20px; width: 85%; max-width: 320px; max-height: 90vh; overflow-y: auto; text-align: center; color: #fff; }
 #modal-title { margin-top: 0; color: #ffeb3b; font-size: 26px; text-shadow: 2px 2px 0 #000; margin-bottom: 10px;}
 #modal-winner-announce { color: #ffeb3b; margin-top: -5px; margin-bottom: 10px; font-size: 22px; text-shadow: 1px 1px 0 #000; }
 #modal-my-tiles { font-size: 14px; margin: 10px 0; color: #ddd; background: rgba(255,255,255,0.1); padding: 8px; border-radius: 8px;}
@@ -91,6 +91,6 @@ body { margin: 0; padding: 0; font-family: 'Jua', sans-serif; background-color: 
 .ranking-1st { color: #4ade80; font-weight: bold; font-size: 16px; }
 #modal-current-coins { font-size: 16px; margin: 10px 0; color: #ffeb3b; background: rgba(255,235,59,0.1); padding: 5px; border-radius: 8px;}
 #modal-confirm-btn { background: #ffeb3b; color: #000; border: 2px solid #000; padding: 12px 20px; border-radius: 8px; font-family: 'Jua'; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 10px; box-shadow: 2px 2px 0px #000;}
-#modal-confirm-btn:disabled { opacity: 0.6; cursor: not-allowed; box-shadow: none;}
+#modal-confirm-btn:disabled { opacity: 0.6; cursor: not-allowed; box-shadow: none; background: #999; border-color: #666;}
 
 @keyframes popIn { 0% { transform: translate(-50%, -50%) scale(0.2) rotate(-20deg); opacity: 0; } 70% { transform: translate(-50%, -50%) scale(1.1) rotate(5deg); } 100% { transform: translate(-50%, -50%) scale(1) rotate(-5deg); opacity: 1; } }
