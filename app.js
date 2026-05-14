@@ -181,10 +181,14 @@ socket.on('showRoundSummary', (room) => {
   const finalRankingsEl = document.getElementById('modal-final-rankings');
   const btn = document.getElementById('modal-confirm-btn');
 
+  // ★ 게임 완전 종료 여부와 무관하게 결산 정보(roundDetailsEl)를 무조건 보여주도록 수정
+  roundDetailsEl.style.display = 'block';
+
   if (room.roundSummary.isGameOver) {
     titleEl.innerText = room.roundSummary.gameEndReason;
     winnerAnnounceEl.innerText = `🏆 ${room.roundSummary.overallWinnerName} 최종 우승!`;
     winnerAnnounceEl.style.display = 'block';
+    
     finalRankingsEl.innerHTML = '';
     room.roundSummary.finalRankings.forEach((r, idx) => {
         const div = document.createElement('div');
@@ -193,17 +197,22 @@ socket.on('showRoundSummary', (room) => {
         finalRankingsEl.appendChild(div);
     });
     finalRankingsEl.style.display = 'block';
-    roundDetailsEl.style.display = 'none';
     
+    // ★ 게임 완전히 종료 시 "새 게임 시작" 레디 이벤트 연동
     btn.innerText = "새 게임 시작하기"; 
     btn.disabled = false;
-    btn.onclick = () => { socket.emit('restartGame', { roomId: currentRoomId }); modal.style.display = 'none'; };
+    btn.onclick = () => { 
+        playSound('select');
+        socket.emit('readyRestartGame', { roomId: currentRoomId, sessionId }); 
+        btn.innerText = `대기 중...`;
+        btn.disabled = true;
+    };
   } else {
     titleEl.innerText = `${room.roundSummary.roundNum}라운드 결산`;
     winnerAnnounceEl.style.display = 'none';
     finalRankingsEl.style.display = 'none';
-    roundDetailsEl.style.display = 'block';
     
+    // ★ 라운드 종료 시 다음 라운드 레디 이벤트 연동
     btn.innerText = "확인 (다음 라운드 대기)";
     btn.disabled = false;
     btn.onclick = () => {
@@ -237,9 +246,10 @@ socket.on('showRoundSummary', (room) => {
   modal.style.display = 'flex';
 });
 
+// ★ 레디 시스템 UI (준비 완료)
 socket.on('readyStatus', ({ current, total }) => {
    const btn = document.getElementById('modal-confirm-btn');
-   if(btn.disabled) btn.innerText = `대기 중... (${current}/${total}명 완료)`;
+   if(btn.disabled) btn.innerText = `${current}/${total} 준비 완료.`;
 });
 
 socket.on('updateRoom', (room) => {
@@ -315,11 +325,11 @@ socket.on('updateRoom', (room) => {
   }
 });
 
-// ★ 먹통 버그 원천 차단
 document.getElementById('playBtn').addEventListener('click', () => {
   if (selectedCards.length === 0) { playSound('error'); return alert('카드를 선택하세요.'); }
   if (![1, 2, 3, 5].includes(selectedCards.length)) { playSound('error'); return alert('1, 2, 3, 5장만 낼 수 있습니다.'); }
   
+  // ★ 버튼 잠금
   document.getElementById('playBtn').disabled = true;
   document.getElementById('passBtn').disabled = true;
   playSound('play'); 
