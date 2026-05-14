@@ -10,7 +10,7 @@ const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*", methods: ["GET", "POST"] } });
 
 const rooms = {};
-const globalUsers = {}; // 계정 및 전적 저장용 전역 객체 { password, sessionId, wins, maxCoins }
+const globalUsers = {}; // ★ 계정, 전적, 세션을 영구 보존하는 전역 데이터베이스
 const SUITS = ['☁️', '⭐', '🌙', '☀️']; 
 const AVATARS = ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐦', '🐥', '🦆', '🦉', '🦇', '🐺', '🐗', '🐴', '🦄', '🐝', '🐛', '🦋', '🐌', '🐢', '🐙', '🦑', '🦐', '🦀', '🐡', '🐠', '🐟', '🐬', '🐳', '🐋', '🦈', '🐊', '🐅', '🐆', '🦓', '🦍', '🐘', '🦏', '🐪', '🐫', '🦒', '🐃', '🐂', '🐄', '🐎', '🐖', '🐏', '🐑', '🐐', '🦌', '🐕', '🐩', '🐈', '🐓', '🦃', '🕊️', '🐇', '🐁', '🐀', '🐿️'];
 
@@ -71,6 +71,7 @@ function analyzeCombo(cards) {
     const counts = {};
     cards.forEach(c => counts[getLexioRank(c.number)] = (counts[getLexioRank(c.number)] || 0) + 1);
     const countVals = Object.values(counts).sort((a,b)=>b-a);
+
     if (straightInfo.valid && isFlush) return { valid: true, type: 5, power: 5, rank: straightInfo.rank, suitRank: getSuitRank(getStraightHighestCard(cards).suit), name: "스트레이트 플러시" };
     if (countVals[0] === 4) return { valid: true, type: 5, power: 4, rank: Number(Object.keys(counts).find(k => counts[k] === 4)), suitRank: 4, name: "포카드" };
     if (countVals[0] === 3 && countVals[1] === 2) return { valid: true, type: 5, power: 3, rank: Number(Object.keys(counts).find(k => counts[k] === 3)), suitRank: 4, name: "풀하우스" };
@@ -105,6 +106,7 @@ function nextTurn(room) {
 io.on('connection', (socket) => {
   socket.emit('roomList', getRoomList());
   
+  // ★ 로그인 시 현재 활성화된 방이 있는지 완벽 검사하여 반환
   socket.on('authenticate', ({ nickname, password }, callback) => {
     if (!nickname || !password) return callback({ success: false, msg: '닉네임과 비밀번호를 입력하세요.' });
     if (globalUsers[nickname]) {
@@ -112,27 +114,25 @@ io.on('connection', (socket) => {
     } else {
       globalUsers[nickname] = { password, sessionId: 'sess_' + Date.now() + Math.random().toString(36).substr(2), wins: 0, maxCoins: 64 };
     }
-    callback({ success: true, sessionId: globalUsers[nickname].sessionId, stats: globalUsers[nickname] });
-  });
-
-  socket.on('checkReconnect', ({ sessionId }) => {
-    if (!sessionId) return;
-    for (const roomId in rooms) {
-      const room = rooms[roomId];
-      const player = room.players.find(p => p.sessionId === sessionId);
-      if (player) {
-        if (player.disconnectTimer) clearTimeout(player.disconnectTimer);
-        player.id = socket.id;
-        player.isDisconnected = false;
-        socket.join(roomId);
-        socket.emit('reconnectSuccess', room.id);
-        io.to(roomId).emit('updateRoom', room);
-        return;
-      }
-    }
+    
+    const sessId = globalUsers[nickname].sessionId;
+    const activeRoom = Object.values(rooms).find(r => r.players.some(p => p.sessionId === sessId));
+    
+    callback({ 
+        success: true, 
+        sessionId: sessId, 
+        stats: globalUsers[nickname],
+        activeRoomId: activeRoom ? activeRoom.id : null
+    });
   });
 
   socket.on('createRoom', ({ roomName, maxPlayers, nickname, sessionId }) => {
+    // 중복 방 생성 방지
+    for (const rid in rooms) {
+        if (rooms[rid].players.some(p => p.sessionId === sessionId)) {
+            return socket.emit('playError', '이미 참여 중인 방이 있습니다. 로그인/복귀 버튼을 눌러주세요.');
+        }
+    }
     const roomId = 'room_' + Date.now();
     rooms[roomId] = { id: roomId, name: roomName, maxPlayers: parseInt(maxPlayers), players: [], currentTurn: 0, field: [], comboText: "대기중", lastPlayedName: "", isPlaying: false, isRoundEnding: false, passCount: 0, currentRound: 1, maxRound: 5, roundSummary: null, readyPlayers: new Set() };
     joinRoomLogic(socket, roomId, nickname, sessionId);
@@ -142,7 +142,7 @@ io.on('connection', (socket) => {
 
   function joinRoomLogic(socket, roomId, nickname, sessionId) {
     const room = rooms[roomId];
-    if (!room) return socket.emit('playError', '방이 존재하지 않습니다.');
+    if (!room) return socket.emit('playError', '방이 존재하지 않습니다. 이미 종료되었을 수 있습니다.');
     
     const existingPlayer = room.players.find(p => p.sessionId === sessionId);
     if (existingPlayer) {
@@ -184,10 +184,13 @@ io.on('connection', (socket) => {
     });
     room.field = []; room.passCount = 0; room.comboText = ""; room.roundSummary = null; room.lastPlayedName = ""; room.readyPlayers.clear();
 
+    // ★ 파란색 3을 가진 사람을 찾아 무조건 선 턴 강제 부여 로직 점검 완료
     if (isNewGame) {
-      let startPlayerIndex = 0;
+      let startPlayerIndex = 0; // 혹시나 못찾을경우 대비 기본값
       room.players.forEach((p, idx) => {
-        if (p.hand.some(c => c.suit === '☁️' && Number(c.number) === 3)) startPlayerIndex = idx;
+        if (p.hand.some(c => c.suit === '☁️' && Number(c.number) === 3)) {
+            startPlayerIndex = idx;
+        }
       });
       room.currentTurn = startPlayerIndex;
       room.comboText = "파란색 3을 가진 플레이어부터 시작!";
@@ -200,7 +203,6 @@ io.on('connection', (socket) => {
 
     room.readyPlayers.add(sessionId);
     const activeCount = room.players.filter(p => !p.isOut).length;
-    
     io.to(roomId).emit('readyStatus', { current: room.readyPlayers.size, total: activeCount });
 
     if (room.readyPlayers.size >= activeCount) {
@@ -232,8 +234,6 @@ io.on('connection', (socket) => {
     const playerIndex = room.players.findIndex(p => p.sessionId === sessionId);
     if (playerIndex === -1 || room.currentTurn !== playerIndex) return;
     const player = room.players[playerIndex];
-
-    // 첫 라운드 첫 턴 파란색3 강제 룰 삭제 완료! 자유로운 플레이 가능!
 
     const newCombo = analyzeCombo(cards);
     if (!newCombo.valid) return socket.emit('playError', '유효하지 않은 조합입니다.');
