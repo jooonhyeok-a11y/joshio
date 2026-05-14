@@ -16,13 +16,13 @@
       <h2 id="modal-title">라운드 종료</h2>
       <h3 id="modal-winner-announce" style="display:none;"></h3>
       <div id="modal-round-details">
-        <div id="modal-my-tiles" style="margin-bottom:15px;">내 남은 타일: 0개</div>
+        <div id="modal-my-tiles" style="margin-bottom:15px; line-height:1.4;">내 남은 타일: 0개</div>
         <div id="modal-exchanges"></div>
         <div id="modal-total-change">나의 코인 변동: +0개</div>
       </div>
       <div id="modal-final-rankings" style="display:none;"></div>
       <div id="modal-current-coins">💰 내가 가진 코인: 64개</div>
-      <button id="modal-confirm-btn">확인</button>
+      <button id="modal-confirm-btn">확인 (다음 라운드 대기)</button>
     </div>
   </div>
 
@@ -32,11 +32,15 @@
       <h3>🏆 내 기록 (자동 저장)</h3>
       <p id="stats-display">누적 승리: 0회 | 최고 자산: 0개</p>
     </div>
+    
+    <!-- ★ 계정 및 복귀 시스템 추가 -->
     <div class="lobby-section">
-      <h3>계정 정보</h3>
+      <h3>계정 로그인 및 복귀</h3>
       <input type="text" id="nicknameInput" placeholder="닉네임 입력 (필수)">
-      <input type="password" id="passwordInput" placeholder="비밀번호 (전적 및 재접속용)">
+      <input type="password" id="passwordInput" placeholder="비밀번호 (전적/재접속 보호용)">
+      <button id="loginRejoinBtn" style="background-color: #4ade80; border: 2px solid #16a34a; margin-top: 5px; color: #000;">로그인 / 진행 중인 게임 복귀</button>
     </div>
+    
     <div class="lobby-section">
       <h3>입장 가능한 방</h3>
       <ul id="roomList"></ul>
@@ -76,7 +80,7 @@
       <div id="my-coins-display">💰 64</div>
     </div>
 
-    <!-- 🌟 채팅창 고정 배치 (아코디언 삭제, 전송버튼 확대) -->
+    <!-- 완전히 고정된 오픈형 채팅창 -->
     <div id="chat-container">
       <div id="chat-messages"></div>
       <div class="chat-input-area">
