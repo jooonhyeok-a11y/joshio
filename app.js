@@ -8,7 +8,7 @@ let sortMode = 'number';
 let lastTurnWasMe = false; 
 let sessionId = '';
 
-// 자동 로그인 세팅
+// 자동 완성 세팅
 if(myNickname && myPassword) {
     document.getElementById('nicknameInput').value = myNickname;
     document.getElementById('passwordInput').value = myPassword;
@@ -36,7 +36,13 @@ function playSound(type) {
 const lobbyEl = document.getElementById('lobby');
 const gameBoardEl = document.getElementById('game-board');
 
-socket.on('playError', (msg) => { alert(msg); playSound('error'); });
+// ★ 에러 발생 시 버튼 비활성화 해제 (먹통 방지)
+socket.on('playError', (msg) => { 
+    alert(msg); 
+    playSound('error'); 
+    document.getElementById('playBtn').disabled = false;
+    document.getElementById('passBtn').disabled = false;
+});
 
 socket.on('roomList', (rooms) => {
   const list = document.getElementById('roomList'); list.innerHTML = '';
@@ -48,7 +54,30 @@ socket.on('roomList', (rooms) => {
   });
 });
 
-// ★ 로그인 프로세스 (방 만들기 / 입장 공통)
+// ★ 로그인 및 게임 복귀 로직
+document.getElementById('loginRejoinBtn').addEventListener('click', () => {
+  const nick = document.getElementById('nicknameInput').value.trim();
+  const pass = document.getElementById('passwordInput').value.trim();
+  if (!nick || !pass) return alert("닉네임과 비밀번호를 모두 입력하세요.");
+
+  socket.emit('authenticate', { nickname: nick, password: pass }, (res) => {
+      if (!res.success) { playSound('error'); return alert(res.msg); }
+      
+      sessionId = res.sessionId;
+      myNickname = nick;
+      localStorage.setItem('lexio_nickname', nick);
+      localStorage.setItem('lexio_password', pass);
+      document.getElementById('stats-display').innerText = `누적 승리: ${res.stats.wins}회 | 최고 자산: ${res.stats.maxCoins}개`;
+
+      if (res.activeRoomId) {
+          socket.emit('joinRoom', { roomId: res.activeRoomId, nickname: nick, sessionId });
+          enterGameMode();
+      } else {
+          alert("로그인 성공! 현재 참여 중인 게임이 없습니다. 방을 만들거나 목록에서 입장해주세요.");
+      }
+  });
+});
+
 function authenticateAndGo(action, data) {
   const nick = document.getElementById('nicknameInput').value.trim();
   const pass = document.getElementById('passwordInput').value.trim();
@@ -62,6 +91,10 @@ function authenticateAndGo(action, data) {
       localStorage.setItem('lexio_nickname', nick);
       localStorage.setItem('lexio_password', pass);
       document.getElementById('stats-display').innerText = `누적 승리: ${res.stats.wins}회 | 최고 자산: ${res.stats.maxCoins}개`;
+
+      if (res.activeRoomId && action !== 'joinRoom') {
+          return alert("이미 참여 중인 방이 있습니다. '로그인 / 진행 중인 게임 복귀' 버튼을 눌러주세요.");
+      }
 
       data.nickname = nick;
       data.sessionId = sessionId;
@@ -131,13 +164,11 @@ function updateComboGuide() {
   g.style.color = text.includes("잘못") || text.includes("불가능") ? "#ff6b6b" : "#4ade80";
 }
 
-// ★ 5초 라운드 종료 세리머니
 socket.on('roundEndAnimation', (data) => {
   playSound('win');
   document.getElementById('combo-text').innerText = data.msg;
 });
 
-// ★ 정산창에 레디 시스템 및 디테일 정보 적용
 socket.on('showRoundSummary', (room) => {
   const modal = document.getElementById('round-modal');
   const myData = room.roundSummary.data[sessionId];
@@ -172,7 +203,6 @@ socket.on('showRoundSummary', (room) => {
     finalRankingsEl.style.display = 'none';
     roundDetailsEl.style.display = 'block';
     
-    // 수동 레디 버튼 세팅
     btn.innerText = "확인 (다음 라운드 대기)";
     btn.disabled = false;
     btn.onclick = () => {
@@ -183,7 +213,7 @@ socket.on('showRoundSummary', (room) => {
     };
   }
 
-  // ★ 2 소지 벌금 상세 표시
+  // ★ 2 소지 벌금 도식화 표시
   let tileText = `${myData.remainingTiles}개`;
   if (myData.twoCount > 0) {
       const multi = Math.pow(2, myData.twoCount);
@@ -191,7 +221,6 @@ socket.on('showRoundSummary', (room) => {
   }
   document.getElementById('modal-my-tiles').innerText = `내 남은 타일: ${tileText}`;
   
-  // ★ 코인 교환 도식화 UI
   const exBox = document.getElementById('modal-exchanges'); exBox.innerHTML = '';
   for (const [opp, val] of Object.entries(myData.exchanges)) {
     if(val === 0) continue;
@@ -203,12 +232,11 @@ socket.on('showRoundSummary', (room) => {
     exBox.appendChild(item);
   }
   
-  document.getElementById('modal-total-change').innerText = `나의 총 코인 변동: ${myData.roundChange > 0 ? '+' : ''}${myData.roundChange}개`;
+  document.getElementById('modal-total-change').innerText = `나의 총 변동: ${myData.roundChange > 0 ? '+' : ''}${myData.roundChange}개`;
   document.getElementById('modal-current-coins').innerText = `💰 현재 소지 코인: ${myData.totalCoins}개`;
   modal.style.display = 'flex';
 });
 
-// 서버에서 레디 상태 수신 시 버튼 텍스트 변경
 socket.on('readyStatus', ({ current, total }) => {
    const btn = document.getElementById('modal-confirm-btn');
    if(btn.disabled) btn.innerText = `대기 중... (${current}/${total}명 완료)`;
@@ -218,13 +246,13 @@ socket.on('updateRoom', (room) => {
   currentRoomId = room.id;
   document.getElementById('round-indicator-text').innerText = `${room.currentRound} / ${room.maxRound} ROUND`;
   
-  // 모달이 닫혀야 하는 시점 (모두 레디 완료되어 새 라운드 시작됨)
   if(!room.roundSummary) document.getElementById('round-modal').style.display = 'none';
 
   const field = document.getElementById('center-field'); field.innerHTML = '';
   room.field.forEach(c => field.appendChild(renderCard(c, false)));
+  
   document.getElementById('combo-text').innerText = room.comboText;
-  document.getElementById('last-played-name').innerText = (room.field.length > 0 && room.lastPlayedName) ? `🗣️ ${room.lastPlayedName}님이 낸 패` : '';
+  document.getElementById('last-played-name').innerText = (room.field.length > 0 && room.lastPlayedName && !room.isRoundEnding) ? `🗣️ ${room.lastPlayedName}님이 낸 패` : '';
 
   const oldSelectedIds = selectedCards.map(c => c.id);
   selectedCards = [];
@@ -287,18 +315,29 @@ socket.on('updateRoom', (room) => {
   }
 });
 
+// ★ 먹통 버그 원천 차단: 클릭 즉시 버튼 비활성화 (서버 응답 시 풀림)
 document.getElementById('playBtn').addEventListener('click', () => {
   if (selectedCards.length === 0) { playSound('error'); return alert('카드를 선택하세요.'); }
-  playSound('play'); socket.emit('playCards', { roomId: currentRoomId, sessionId, cards: selectedCards });
+  if (![1, 2, 3, 5].includes(selectedCards.length)) { playSound('error'); return alert('1, 2, 3, 5장만 낼 수 있습니다.'); }
+  
+  document.getElementById('playBtn').disabled = true;
+  document.getElementById('passBtn').disabled = true;
+  playSound('play'); 
+  socket.emit('playCards', { roomId: currentRoomId, sessionId, cards: selectedCards });
 });
+
 document.getElementById('passBtn').addEventListener('click', () => { 
-  playSound('pass'); socket.emit('passTurn', { roomId: currentRoomId, sessionId }); 
+  document.getElementById('playBtn').disabled = true;
+  document.getElementById('passBtn').disabled = true;
+  playSound('pass'); 
+  socket.emit('passTurn', { roomId: currentRoomId, sessionId }); 
 });
 
 document.getElementById('sendChatBtn').addEventListener('click', () => {
   const m = document.getElementById('chatInput').value.trim();
   if (m) { socket.emit('chatMessage', { roomId: currentRoomId, nickname: myNickname, msg: m }); document.getElementById('chatInput').value = ''; }
 });
+
 socket.on('chatMessage', (d) => {
   playSound('chat');
   const box = document.getElementById('chat-messages');
