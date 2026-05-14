@@ -10,7 +10,7 @@ const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*", methods: ["GET", "POST"] } });
 
 const rooms = {};
-const globalUsers = {}; // ★ 계정 및 전적 저장용 전역 객체 { password, sessionId, wins, maxCoins }
+const globalUsers = {}; // 계정 및 전적 저장용 전역 객체 { password, sessionId, wins, maxCoins }
 const SUITS = ['☁️', '⭐', '🌙', '☀️']; 
 const AVATARS = ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐦', '🐥', '🦆', '🦉', '🦇', '🐺', '🐗', '🐴', '🦄', '🐝', '🐛', '🦋', '🐌', '🐢', '🐙', '🦑', '🦐', '🦀', '🐡', '🐠', '🐟', '🐬', '🐳', '🐋', '🦈', '🐊', '🐅', '🐆', '🦓', '🦍', '🐘', '🦏', '🐪', '🐫', '🦒', '🐃', '🐂', '🐄', '🐎', '🐖', '🐏', '🐑', '🐐', '🦌', '🐕', '🐩', '🐈', '🐓', '🦃', '🕊️', '🐇', '🐁', '🐀', '🐿️'];
 
@@ -105,7 +105,6 @@ function nextTurn(room) {
 io.on('connection', (socket) => {
   socket.emit('roomList', getRoomList());
   
-  // ★ 로그인 및 패스워드 인증 로직 (완벽한 복구 지원)
   socket.on('authenticate', ({ nickname, password }, callback) => {
     if (!nickname || !password) return callback({ success: false, msg: '닉네임과 비밀번호를 입력하세요.' });
     if (globalUsers[nickname]) {
@@ -135,7 +134,7 @@ io.on('connection', (socket) => {
 
   socket.on('createRoom', ({ roomName, maxPlayers, nickname, sessionId }) => {
     const roomId = 'room_' + Date.now();
-    rooms[roomId] = { id: roomId, name: roomName, maxPlayers: parseInt(maxPlayers), players: [], currentTurn: 0, field: [], comboText: "대기중", lastPlayedName: "", isPlaying: false, isRoundEnding: false, passCount: 0, currentRound: 1, maxRound: 5, roundSummary: null, isFirstPlay: false, readyPlayers: new Set() };
+    rooms[roomId] = { id: roomId, name: roomName, maxPlayers: parseInt(maxPlayers), players: [], currentTurn: 0, field: [], comboText: "대기중", lastPlayedName: "", isPlaying: false, isRoundEnding: false, passCount: 0, currentRound: 1, maxRound: 5, roundSummary: null, readyPlayers: new Set() };
     joinRoomLogic(socket, roomId, nickname, sessionId);
   });
 
@@ -178,7 +177,6 @@ io.on('connection', (socket) => {
     if (isNewGame) {
       const shuffledAvatars = [...AVATARS].sort(() => Math.random() - 0.5);
       room.players.forEach((p, i) => { p.avatar = shuffledAvatars[i]; });
-      room.isFirstPlay = true;
     }
 
     activePlayers.forEach((p, index) => {
@@ -196,7 +194,6 @@ io.on('connection', (socket) => {
     }
   }
 
-  // ★ 레디 시스템 기반 다음 라운드 진행
   socket.on('readyNextRound', ({ roomId, sessionId }) => {
     const room = rooms[roomId];
     if (!room || !room.roundSummary || room.roundSummary.isGameOver) return;
@@ -230,23 +227,20 @@ io.on('connection', (socket) => {
 
   socket.on('playCards', ({ roomId, sessionId, cards }) => {
     const room = rooms[roomId];
-    if (!room || room.isRoundEnding) return; // 세리머니 중 조작 방지
+    if (!room || room.isRoundEnding) return; 
 
     const playerIndex = room.players.findIndex(p => p.sessionId === sessionId);
     if (playerIndex === -1 || room.currentTurn !== playerIndex) return;
     const player = room.players[playerIndex];
 
-    if (room.isFirstPlay) {
-      const hasCloud3 = cards.some(c => c.suit === '☁️' && Number(c.number) === 3);
-      if (!hasCloud3) return socket.emit('playError', '첫 라운드 첫 턴에는 반드시 파란색(구름) 3을 포함하여 내야 합니다!');
-    }
+    // 첫 라운드 첫 턴 파란색3 강제 룰 삭제 완료! 자유로운 플레이 가능!
 
     const newCombo = analyzeCombo(cards);
     if (!newCombo.valid) return socket.emit('playError', '유효하지 않은 조합입니다.');
     const lastCombo = room.field.length > 0 ? analyzeCombo(room.field) : null;
     if (!canPlay(lastCombo, newCombo)) return socket.emit('playError', '더 높은 패를 내야 합니다.');
 
-    room.field = cards; room.comboText = newCombo.name; room.passCount = 0; room.isFirstPlay = false;
+    room.field = cards; room.comboText = newCombo.name; room.passCount = 0; 
     player.hand = player.hand.filter(hc => !cards.find(c => c.id === hc.id));
     room.lastPlayedName = player.nickname;
 
@@ -285,7 +279,6 @@ io.on('connection', (socket) => {
           if (p.coins <= 0) { p.coins = 0; p.isOut = true; bankruptPlayerName = p.nickname; }
           summaryData[p.sessionId].roundChange = p.roundChange;
           summaryData[p.sessionId].totalCoins = p.coins;
-          // 전적 업데이트
           if(globalUsers[p.nickname]) {
               if (p.coins > globalUsers[p.nickname].maxCoins) globalUsers[p.nickname].maxCoins = p.coins;
               if (p.id === player.id) globalUsers[p.nickname].wins += 1;
@@ -306,7 +299,7 @@ io.on('connection', (socket) => {
         if(isGameOver) room.isPlaying = false;
         
         io.to(roomId).emit('showRoundSummary', room);
-      }, 5000); // 5초 뒤 정산창 띄움
+      }, 5000); 
       return;
     }
     nextTurn(room);
