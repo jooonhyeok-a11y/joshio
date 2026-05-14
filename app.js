@@ -3,28 +3,18 @@ const socket = io('https://joshio.onrender.com');
 let currentRoomId = '';
 let selectedCards = [];
 let myNickname = localStorage.getItem('lexio_nickname') || '';
+let myPassword = localStorage.getItem('lexio_password') || '';
 let sortMode = 'number'; 
-let currentSummaryStr = null; 
 let lastTurnWasMe = false; 
+let sessionId = '';
 
-let sessionId = localStorage.getItem('lexio_sessionId');
-if (!sessionId) {
-  sessionId = Math.random().toString(36).substring(2, 15);
-  localStorage.setItem('lexio_sessionId', sessionId);
+// 자동 로그인 세팅
+if(myNickname && myPassword) {
+    document.getElementById('nicknameInput').value = myNickname;
+    document.getElementById('passwordInput').value = myPassword;
 }
 
-socket.on('connect', () => { if (sessionId) socket.emit('checkReconnect', { sessionId }); });
-socket.on('reconnectSuccess', (roomId) => {
-  myNickname = localStorage.getItem('lexio_nickname') || '재접속자';
-  currentRoomId = roomId; enterGameMode();
-});
-
-function getLexioRank(num) { 
-  const number = Number(num);
-  if (number === 1) return 14; 
-  if (number === 2) return 15; 
-  return number - 2; 
-}
+function getLexioRank(num) { const number = Number(num); if (number === 1) return 14; if (number === 2) return 15; return number - 2; }
 function getSuitRank(suit) { if (suit === '☁️') return 1; if (suit === '⭐') return 2; if (suit === '🌙') return 3; if (suit === '☀️') return 4; return 0; }
 
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -47,11 +37,6 @@ const lobbyEl = document.getElementById('lobby');
 const gameBoardEl = document.getElementById('game-board');
 
 socket.on('playError', (msg) => { alert(msg); playSound('error'); });
-socket.on('systemLog', (msg) => {
-  const logs = document.getElementById('system-logs');
-  const div = document.createElement('div'); div.innerText = msg;
-  logs.appendChild(div); logs.scrollTop = logs.scrollHeight;
-});
 
 socket.on('roomList', (rooms) => {
   const list = document.getElementById('roomList'); list.innerHTML = '';
@@ -63,29 +48,41 @@ socket.on('roomList', (rooms) => {
   });
 });
 
-document.getElementById('createRoomBtn').addEventListener('click', () => {
+// ★ 로그인 프로세스 (방 만들기 / 입장 공통)
+function authenticateAndGo(action, data) {
   const nick = document.getElementById('nicknameInput').value.trim();
+  const pass = document.getElementById('passwordInput').value.trim();
+  if (!nick || !pass) return alert("닉네임과 비밀번호를 모두 입력하세요.");
+
+  socket.emit('authenticate', { nickname: nick, password: pass }, (res) => {
+      if (!res.success) { playSound('error'); return alert(res.msg); }
+      
+      sessionId = res.sessionId;
+      myNickname = nick;
+      localStorage.setItem('lexio_nickname', nick);
+      localStorage.setItem('lexio_password', pass);
+      document.getElementById('stats-display').innerText = `누적 승리: ${res.stats.wins}회 | 최고 자산: ${res.stats.maxCoins}개`;
+
+      data.nickname = nick;
+      data.sessionId = sessionId;
+      socket.emit(action, data);
+      enterGameMode();
+  });
+}
+
+document.getElementById('createRoomBtn').addEventListener('click', () => {
   const rName = document.getElementById('roomNameInput').value.trim();
   const maxP = document.getElementById('playerCountSelect').value;
-  if (!nick || !rName) return alert("필수 정보를 입력하세요.");
-  myNickname = nick; localStorage.setItem('lexio_nickname', nick);
-  socket.emit('createRoom', { roomName: rName, maxPlayers: maxP, nickname: nick, sessionId });
-  enterGameMode();
+  if (!rName) return alert("방 제목을 입력하세요.");
+  authenticateAndGo('createRoom', { roomName: rName, maxPlayers: maxP });
 });
 
-window.joinRoom = function(id) {
-  const nick = document.getElementById('nicknameInput').value.trim();
-  if (!nick) return alert("닉네임을 입력하세요.");
-  myNickname = nick; localStorage.setItem('lexio_nickname', nick);
-  socket.emit('joinRoom', { roomId: id, nickname: nick, sessionId });
-  enterGameMode();
-}
+window.joinRoom = function(id) { authenticateAndGo('joinRoom', { roomId: id }); }
 
 function enterGameMode() { lobbyEl.style.display = 'none'; gameBoardEl.style.display = 'block'; if(audioCtx.state === 'suspended') audioCtx.resume(); }
 
 document.getElementById('toggleSortBtn').addEventListener('click', () => {
   sortMode = sortMode === 'number' ? 'suit' : 'number';
-  
   const myHandEl = document.getElementById('my-hand');
   const cards = Array.from(myHandEl.children);
   cards.sort((a, b) => {
@@ -108,17 +105,12 @@ function renderCard(cardData, isHand = false, oldSelectedIds = []) {
         div.classList.add('selected');
         if (!selectedCards.find(c => c.id === cardData.id)) selectedCards.push(cardData);
     }
-
     div.addEventListener('click', () => {
       const idx = selectedCards.findIndex(c => c.id === cardData.id);
       if (idx > -1) {
-        selectedCards.splice(idx, 1); 
-        div.classList.remove('selected');
-        playSound('unselect');
+        selectedCards.splice(idx, 1); div.classList.remove('selected'); playSound('unselect');
       } else { 
-        selectedCards.push(cardData);
-        div.classList.add('selected');
-        playSound('select');
+        selectedCards.push(cardData); div.classList.add('selected'); playSound('select');
       }
       updateComboGuide();
     });
@@ -131,15 +123,22 @@ function updateComboGuide() {
   if (selectedCards.length === 0) { g.innerText = "선택한 카드: 없음"; return; }
   const len = selectedCards.length; let text = "알 수 없는 조합";
   if(len === 1) text = "싱글 (1장)";
-  if(len === 2) text = Number(selectedCards[0].number) === Number(selectedCards[1].number) ? "페어 (2장)" : "잘못된 조합 (페어 아님)";
+  if(len === 2) text = Number(selectedCards[0].number) === Number(selectedCards[1].number) ? "페어 (2장)" : "잘못된 조합";
   if(len === 3) text = (Number(selectedCards[0].number) === Number(selectedCards[1].number) && Number(selectedCards[1].number) === Number(selectedCards[2].number)) ? "트리플 (3장)" : "잘못된 조합";
-  if(len === 5) text = "5장 조합 (제출 시 검증됨)";
-  if(len === 4 || len > 5) text = "불가능한 장수 (1,2,3,5장만 가능)";
+  if(len === 5) text = "5장 조합 (검증 대기)";
+  if(len === 4 || len > 5) text = "불가능한 장수";
   g.innerText = `현재 선택: ${text}`;
   g.style.color = text.includes("잘못") || text.includes("불가능") ? "#ff6b6b" : "#4ade80";
 }
 
-function showRoundSummary(room) {
+// ★ 5초 라운드 종료 세리머니
+socket.on('roundEndAnimation', (data) => {
+  playSound('win');
+  document.getElementById('combo-text').innerText = data.msg;
+});
+
+// ★ 정산창에 레디 시스템 및 디테일 정보 적용
+socket.on('showRoundSummary', (room) => {
   const modal = document.getElementById('round-modal');
   const myData = room.roundSummary.data[sessionId];
   if (!myData) return;
@@ -163,38 +162,64 @@ function showRoundSummary(room) {
     });
     finalRankingsEl.style.display = 'block';
     roundDetailsEl.style.display = 'none';
+    
     btn.innerText = "새 게임 시작하기"; 
+    btn.disabled = false;
     btn.onclick = () => { socket.emit('restartGame', { roomId: currentRoomId }); modal.style.display = 'none'; };
   } else {
-    titleEl.innerText = "라운드 종료결산";
+    titleEl.innerText = `${room.roundSummary.roundNum}라운드 결산`;
     winnerAnnounceEl.style.display = 'none';
     finalRankingsEl.style.display = 'none';
     roundDetailsEl.style.display = 'block';
-    let t = 10; btn.innerText = `확인 (다음 라운드로 ${t}초)`; 
-    btn.onclick = () => modal.style.display = 'none';
-    if(window.sumInt) clearInterval(window.sumInt);
-    window.sumInt = setInterval(() => { t--; if(t > 0) btn.innerText = `확인 (다음 라운드로 ${t}초)`; else { clearInterval(window.sumInt); modal.style.display = 'none'; }}, 1000);
+    
+    // 수동 레디 버튼 세팅
+    btn.innerText = "확인 (다음 라운드 대기)";
+    btn.disabled = false;
+    btn.onclick = () => {
+        playSound('select');
+        socket.emit('readyNextRound', { roomId: currentRoomId, sessionId });
+        btn.innerText = `대기 중...`;
+        btn.disabled = true;
+    };
   }
-  document.getElementById('modal-my-tiles').innerText = `내 남은 타일: ${myData.remainingTiles}개`;
+
+  // ★ 2 소지 벌금 상세 표시
+  let tileText = `${myData.remainingTiles}개`;
+  if (myData.twoCount > 0) {
+      const multi = Math.pow(2, myData.twoCount);
+      tileText = `${myData.effCards}개 (기본 ${myData.remainingTiles}개 x '2' ${myData.twoCount}장 소지 벌금 ${multi}배!)`;
+  }
+  document.getElementById('modal-my-tiles').innerText = `내 남은 타일: ${tileText}`;
+  
+  // ★ 코인 교환 도식화 UI
   const exBox = document.getElementById('modal-exchanges'); exBox.innerHTML = '';
   for (const [opp, val] of Object.entries(myData.exchanges)) {
-    const item = document.createElement('div'); item.className = 'exchange-item';
-    const arrow = val > 0 ? '⬇️' : '⬆️';
-    item.innerHTML = `${opp}: <span style="color:${val > 0 ? '#4ade80' : '#ff6b6b'}">${arrow} ${val}</span>`;
+    if(val === 0) continue;
+    const item = document.createElement('div'); 
+    item.className = 'exchange-item' + (val < 0 ? ' negative' : '');
+    const arrow = val > 0 ? '⬅️ 받음' : '지급 ➡️';
+    const sign = val > 0 ? '+' : '';
+    item.innerHTML = `<span>상대: <b>${opp}</b></span> <span>${arrow}</span> <span class="ex-amount" style="color:${val > 0 ? '#4ade80' : '#ff6b6b'}">${sign}${val}</span>`;
     exBox.appendChild(item);
   }
-  document.getElementById('modal-total-change').innerText = `나의 코인 변동: ${myData.roundChange > 0 ? '+' : ''}${myData.roundChange}개`;
-  document.getElementById('modal-current-coins').innerText = `💰 내가 가진 코인: ${myData.totalCoins}개`;
+  
+  document.getElementById('modal-total-change').innerText = `나의 총 코인 변동: ${myData.roundChange > 0 ? '+' : ''}${myData.roundChange}개`;
+  document.getElementById('modal-current-coins').innerText = `💰 현재 소지 코인: ${myData.totalCoins}개`;
   modal.style.display = 'flex';
-}
+});
+
+// 서버에서 레디 상태 수신 시 버튼 텍스트 변경
+socket.on('readyStatus', ({ current, total }) => {
+   const btn = document.getElementById('modal-confirm-btn');
+   if(btn.disabled) btn.innerText = `대기 중... (${current}/${total}명 완료)`;
+});
 
 socket.on('updateRoom', (room) => {
   currentRoomId = room.id;
   document.getElementById('round-indicator-text').innerText = `${room.currentRound} / ${room.maxRound} ROUND`;
-  if (room.roundSummary) {
-    const s = JSON.stringify(room.roundSummary);
-    if (currentSummaryStr !== s) { currentSummaryStr = s; showRoundSummary(room); }
-  } else { document.getElementById('round-modal').style.display = 'none'; currentSummaryStr = null; }
+  
+  // 모달이 닫혀야 하는 시점 (모두 레디 완료되어 새 라운드 시작됨)
+  if(!room.roundSummary) document.getElementById('round-modal').style.display = 'none';
 
   const field = document.getElementById('center-field'); field.innerHTML = '';
   room.field.forEach(c => field.appendChild(renderCard(c, false)));
@@ -230,10 +255,7 @@ socket.on('updateRoom', (room) => {
       else { pos = (rel === 1 ? 'pos-left' : rel === 2 ? 'pos-top-left' : rel === 3 ? 'pos-top-right' : 'pos-right'); }
       const isTurn = (room.currentTurn === i && room.isPlaying && !p.isOut);
       const div = document.createElement('div'); div.className = `opponent-area ${pos}` + (isTurn ? ' is-turn' : '');
-      
-      // ★ 랜덤 아바타 반영
       div.innerHTML = (isTurn ? '<span class="turn-badge">현재 턴</span><br>' : '') + `<span class="opponent-name">${p.isOut ? '💀' : p.isDisconnected ? '⏳' : p.avatar} ${p.nickname} (💰${p.coins})</span>`;
-      
       const cardsWrapper = document.createElement('div'); cardsWrapper.className = 'opponent-hand';
       if (!p.isOut) {
           for(let k=0; k<p.hand.length; k++) cardsWrapper.innerHTML += '<div class="card-back"></div>';
@@ -248,7 +270,8 @@ socket.on('updateRoom', (room) => {
   const turnIndicator = document.getElementById('my-turn-indicator');
   const playBtn = document.getElementById('playBtn');
   const passBtn = document.getElementById('passBtn');
-  if (room.isPlaying) {
+  
+  if (room.isPlaying && !room.isRoundEnding) {
     if (myIdx !== -1 && room.currentTurn === myIdx && !room.players[myIdx].isOut) {
       turnIndicator.style.display = 'block';
       turnIndicator.innerText = room.field.length === 0 ? "👉 내 턴! (선입니다)" : "👉 내 턴입니다!";
@@ -259,27 +282,19 @@ socket.on('updateRoom', (room) => {
       playBtn.disabled = true; passBtn.disabled = true; lastTurnWasMe = false;
     }
   } else {
-    turnIndicator.style.display = 'block'; turnIndicator.innerText = `대기/종료 (${room.players.length}/${room.maxPlayers}명)`;
+    turnIndicator.style.display = 'block'; turnIndicator.innerText = room.isRoundEnding ? `라운드 결산 중...` : `대기/종료 (${room.players.length}/${room.maxPlayers}명)`;
     playBtn.disabled = true; passBtn.disabled = true; lastTurnWasMe = false;
   }
 });
 
-socket.on('gameWin', ({ winnerId, winnerName }) => {
-  playSound('win');
-  if (socket.id === winnerId || sessionId) confetti({ particleCount: 150, spread: 100, origin: { y: 0.5 }, colors: ['#ffeb3b', '#4ade80', '#1890ff', '#ff6b6b'] });
-});
-
 document.getElementById('playBtn').addEventListener('click', () => {
   if (selectedCards.length === 0) { playSound('error'); return alert('카드를 선택하세요.'); }
-  playSound('play'); socket.emit('playCards', { roomId: currentRoomId, cards: selectedCards });
+  playSound('play'); socket.emit('playCards', { roomId: currentRoomId, sessionId, cards: selectedCards });
 });
-document.getElementById('passBtn').addEventListener('click', () => { playSound('pass'); socket.emit('passTurn', { roomId: currentRoomId }); });
+document.getElementById('passBtn').addEventListener('click', () => { 
+  playSound('pass'); socket.emit('passTurn', { roomId: currentRoomId, sessionId }); 
+});
 
-const chatPreview = document.getElementById('chat-preview');
-const chatContainer = document.getElementById('chat-container');
-const closeChatBtn = document.getElementById('closeChatBtn');
-chatPreview.addEventListener('click', () => { chatContainer.classList.add('expanded'); document.getElementById('chatInput').focus(); });
-closeChatBtn.addEventListener('click', () => { chatContainer.classList.remove('expanded'); });
 document.getElementById('sendChatBtn').addEventListener('click', () => {
   const m = document.getElementById('chatInput').value.trim();
   if (m) { socket.emit('chatMessage', { roomId: currentRoomId, nickname: myNickname, msg: m }); document.getElementById('chatInput').value = ''; }
@@ -289,5 +304,4 @@ socket.on('chatMessage', (d) => {
   const box = document.getElementById('chat-messages');
   const div = document.createElement('div'); div.innerHTML = `<b>${d.nickname}:</b> ${d.msg}`;
   box.appendChild(div); box.scrollTop = box.scrollHeight;
-  chatPreview.innerHTML = `<span style="color:#ffeb3b;">${d.nickname}:</span> ${d.msg}`;
 });
