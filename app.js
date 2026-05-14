@@ -6,9 +6,8 @@ let myNickname = localStorage.getItem('lexio_nickname') || '';
 let myPassword = localStorage.getItem('lexio_password') || '';
 let sortMode = 'number'; 
 let lastTurnWasMe = false; 
-let sessionId = '';
+let sessionId = localStorage.getItem('lexio_sessionId') || '';
 
-// 자동 완성 세팅
 if(myNickname && myPassword) {
     document.getElementById('nicknameInput').value = myNickname;
     document.getElementById('passwordInput').value = myPassword;
@@ -36,7 +35,6 @@ function playSound(type) {
 const lobbyEl = document.getElementById('lobby');
 const gameBoardEl = document.getElementById('game-board');
 
-// ★ 에러 발생 시 버튼 비활성화 해제 (먹통 방지)
 socket.on('playError', (msg) => { 
     alert(msg); 
     playSound('error'); 
@@ -54,7 +52,6 @@ socket.on('roomList', (rooms) => {
   });
 });
 
-// ★ 로그인 및 게임 복귀 로직
 document.getElementById('loginRejoinBtn').addEventListener('click', () => {
   const nick = document.getElementById('nicknameInput').value.trim();
   const pass = document.getElementById('passwordInput').value.trim();
@@ -67,6 +64,8 @@ document.getElementById('loginRejoinBtn').addEventListener('click', () => {
       myNickname = nick;
       localStorage.setItem('lexio_nickname', nick);
       localStorage.setItem('lexio_password', pass);
+      localStorage.setItem('lexio_sessionId', sessionId);
+
       document.getElementById('stats-display').innerText = `누적 승리: ${res.stats.wins}회 | 최고 자산: ${res.stats.maxCoins}개`;
 
       if (res.activeRoomId) {
@@ -90,6 +89,8 @@ function authenticateAndGo(action, data) {
       myNickname = nick;
       localStorage.setItem('lexio_nickname', nick);
       localStorage.setItem('lexio_password', pass);
+      localStorage.setItem('lexio_sessionId', sessionId);
+      
       document.getElementById('stats-display').innerText = `누적 승리: ${res.stats.wins}회 | 최고 자산: ${res.stats.maxCoins}개`;
 
       if (res.activeRoomId && action !== 'joinRoom') {
@@ -213,7 +214,6 @@ socket.on('showRoundSummary', (room) => {
     };
   }
 
-  // ★ 2 소지 벌금 도식화 표시
   let tileText = `${myData.remainingTiles}개`;
   if (myData.twoCount > 0) {
       const multi = Math.pow(2, myData.twoCount);
@@ -315,7 +315,7 @@ socket.on('updateRoom', (room) => {
   }
 });
 
-// ★ 먹통 버그 원천 차단: 클릭 즉시 버튼 비활성화 (서버 응답 시 풀림)
+// ★ 먹통 버그 원천 차단
 document.getElementById('playBtn').addEventListener('click', () => {
   if (selectedCards.length === 0) { playSound('error'); return alert('카드를 선택하세요.'); }
   if (![1, 2, 3, 5].includes(selectedCards.length)) { playSound('error'); return alert('1, 2, 3, 5장만 낼 수 있습니다.'); }
