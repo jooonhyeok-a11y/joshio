@@ -2,6 +2,8 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 app.use(cors());
@@ -9,10 +11,44 @@ const server = http.createServer(app);
 
 const io = new Server(server, { cors: { origin: "*", methods: ["GET", "POST"] } });
 
-const rooms = {};
-const globalUsers = {}; // ★ 계정, 전적, 세션을 영구 보존하는 전역 데이터베이스
+// ★ 서버 데이터 영구 보존용 파일 시스템
+const DATA_FILE = path.join(__dirname, 'lexio_data.json');
+let rooms = {};
+let globalUsers = {}; 
+
 const SUITS = ['☁️', '⭐', '🌙', '☀️']; 
 const AVATARS = ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐦', '🐥', '🦆', '🦉', '🦇', '🐺', '🐗', '🐴', '🦄', '🐝', '🐛', '🦋', '🐌', '🐢', '🐙', '🦑', '🦐', '🦀', '🐡', '🐠', '🐟', '🐬', '🐳', '🐋', '🦈', '🐊', '🐅', '🐆', '🦓', '🦍', '🐘', '🦏', '🐪', '🐫', '🦒', '🐃', '🐂', '🐄', '🐎', '🐖', '🐏', '🐑', '🐐', '🦌', '🐕', '🐩', '🐈', '🐓', '🦃', '🕊️', '🐇', '🐁', '🐀', '🐿️'];
+
+// --- 데이터 자동 복구 및 백업 함수 ---
+function loadData() {
+    try {
+        if (fs.existsSync(DATA_FILE)) {
+            const data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+            globalUsers = data.globalUsers || {};
+            const loadedRooms = data.rooms || {};
+            for (let rid in loadedRooms) {
+                rooms[rid] = loadedRooms[rid];
+                rooms[rid].readyPlayers = new Set(rooms[rid].readyPlayers || []);
+                rooms[rid].players.forEach(p => { p.disconnectTimer = null; p.isDisconnected = true; }); // 서버 재시작 시 전원 오프라인 처리
+            }
+            console.log('[시스템] 저장된 게임 데이터를 성공적으로 불러왔습니다.');
+        }
+    } catch(e) { console.error('[오류] 데이터 로드 실패:', e); }
+}
+
+function saveData() {
+    try {
+        const safeRooms = {};
+        for(let rid in rooms) {
+            safeRooms[rid] = { ...rooms[rid], readyPlayers: Array.from(rooms[rid].readyPlayers) };
+        }
+        fs.writeFileSync(DATA_FILE, JSON.stringify({ rooms: safeRooms, globalUsers }));
+    } catch(e) { console.error('[오류] 데이터 저장 실패:', e); }
+}
+
+loadData();
+setInterval(saveData, 5000); // 5초마다 모든 진행상황 하드디스크에 자동 백업
+// ------------------------------------
 
 function getLexioRank(num) { const number = Number(num); if (number === 1) return 14; if (number === 2) return 15; return number - 2; }
 function getSuitRank(suit) { if (suit === '☁️') return 1; if (suit === '⭐') return 2; if (suit === '🌙') return 3; if (suit === '☀️') return 4; return 0; }
@@ -96,9 +132,10 @@ function canPlay(lastCombo, newCombo) {
 
 function nextTurn(room) {
   let next = (room.currentTurn + 1) % room.players.length;
-  while (room.players[next].isOut || room.players[next].isDisconnected) {
+  let attempts = 0;
+  while ((room.players[next].isOut || room.players[next].isDisconnected) && attempts < room.players.length) {
     next = (next + 1) % room.players.length;
-    if (next === room.currentTurn) break; 
+    attempts++;
   }
   room.currentTurn = next;
 }
@@ -106,7 +143,6 @@ function nextTurn(room) {
 io.on('connection', (socket) => {
   socket.emit('roomList', getRoomList());
   
-  // ★ 로그인 시 현재 활성화된 방이 있는지 완벽 검사하여 반환
   socket.on('authenticate', ({ nickname, password }, callback) => {
     if (!nickname || !password) return callback({ success: false, msg: '닉네임과 비밀번호를 입력하세요.' });
     if (globalUsers[nickname]) {
@@ -116,7 +152,7 @@ io.on('connection', (socket) => {
     }
     
     const sessId = globalUsers[nickname].sessionId;
-    const activeRoom = Object.values(rooms).find(r => r.players.some(p => p.sessionId === sessId));
+    const activeRoom = Object.values(rooms).find(r => r.players.some(p => p.sessionId === sessId && !p.isOut));
     
     callback({ 
         success: true, 
@@ -126,10 +162,26 @@ io.on('connection', (socket) => {
     });
   });
 
+  socket.on('checkReconnect', ({ sessionId }) => {
+    if (!sessionId) return;
+    for (const roomId in rooms) {
+      const room = rooms[roomId];
+      const player = room.players.find(p => p.sessionId === sessionId);
+      if (player) {
+        if (player.disconnectTimer) clearTimeout(player.disconnectTimer);
+        player.id = socket.id;
+        player.isDisconnected = false;
+        socket.join(roomId);
+        socket.emit('reconnectSuccess', room.id);
+        io.to(roomId).emit('updateRoom', room);
+        return;
+      }
+    }
+  });
+
   socket.on('createRoom', ({ roomName, maxPlayers, nickname, sessionId }) => {
-    // 중복 방 생성 방지
     for (const rid in rooms) {
-        if (rooms[rid].players.some(p => p.sessionId === sessionId)) {
+        if (rooms[rid].players.some(p => p.sessionId === sessionId && !p.isOut)) {
             return socket.emit('playError', '이미 참여 중인 방이 있습니다. 로그인/복귀 버튼을 눌러주세요.');
         }
     }
@@ -184,13 +236,10 @@ io.on('connection', (socket) => {
     });
     room.field = []; room.passCount = 0; room.comboText = ""; room.roundSummary = null; room.lastPlayedName = ""; room.readyPlayers.clear();
 
-    // ★ 파란색 3을 가진 사람을 찾아 무조건 선 턴 강제 부여 로직 점검 완료
     if (isNewGame) {
-      let startPlayerIndex = 0; // 혹시나 못찾을경우 대비 기본값
+      let startPlayerIndex = 0;
       room.players.forEach((p, idx) => {
-        if (p.hand.some(c => c.suit === '☁️' && Number(c.number) === 3)) {
-            startPlayerIndex = idx;
-        }
+        if (p.hand.some(c => c.suit === '☁️' && Number(c.number) === 3)) startPlayerIndex = idx;
       });
       room.currentTurn = startPlayerIndex;
       room.comboText = "파란색 3을 가진 플레이어부터 시작!";
@@ -202,7 +251,7 @@ io.on('connection', (socket) => {
     if (!room || !room.roundSummary || room.roundSummary.isGameOver) return;
 
     room.readyPlayers.add(sessionId);
-    const activeCount = room.players.filter(p => !p.isOut).length;
+    const activeCount = room.players.filter(p => !p.isOut && !p.isDisconnected).length;
     io.to(roomId).emit('readyStatus', { current: room.readyPlayers.size, total: activeCount });
 
     if (room.readyPlayers.size >= activeCount) {
